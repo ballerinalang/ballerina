@@ -176,7 +176,7 @@ public class InitCommandTest extends BaseCommandTest {
         Assert.assertTrue(readOutput().contains("Created new Ballerina package"));
     }
 
-    @Test(description = "Test init command with invalid template")
+    @Test(description = "Test init command with invalid template", enabled = false)
     public void testInitCommandWithInvalidTemplate() throws IOException {
         // Test if no arguments was passed in
         String[] args = {"myproject", "-t", "invalid"};

@@ -1,34 +1,33 @@
 import ballerina/io;
+import ballerina/http;
 import ballerina/test;
 
 http:Client testClient = check new ("http://localhost:9090/hello");
 
-# Before Suite Function
+// Before Suite Function
 
 @test:BeforeSuite
 function beforeSuiteFunc() {
     io:println("I'm the before suite function!");
 }
 
-# Test function
+// Test function
 
 @test:Config {}
-function testServiceFunction() returns string {
-    io:println("Do your service Test!");
-    http:Response response = check testClient->get("/sayHello/?name=John");
-    test:assertEquals("Hello, John");
+function testServiceWithProperName() {
+    string|error response = testClient->get("/sayHello/?name=John");
+    test:assertEquals(response, "Hello, John");
 }
 
-# Negative test function
+// Negative test function
 
 @test:Config {}
-function testServiceFunctionNegative() returns error? {
-    io:println("Do your negative service Test!");
+function testServiceWithEmptyName() returns error? {
     http:Response response = check testClient->get("/sayHello/?name=");
-    test:assertEquals("Name is empty!");
+    test:assertEquals(response.getTextPayload(), "name should not be empty!");
 }
 
-# After Suite Function
+// After Suite Function
 
 @test:AfterSuite
 function afterSuiteFunc() {

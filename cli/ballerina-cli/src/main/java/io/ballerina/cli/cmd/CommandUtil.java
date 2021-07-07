@@ -196,7 +196,14 @@ public class CommandUtil {
      */
     public static void applyTemplate(Path modulePath, String template) throws IOException, URISyntaxException {
         Path templateDir = getTemplatePath().resolve(template);
-        Files.walkFileTree(templateDir, new FileUtils.Copy(templateDir, modulePath));
+        if (template.equalsIgnoreCase("main")) {
+            templateDir = getTemplatePath().resolve("default");
+            Path tempDirTest = getTemplatePath().resolve("main");
+            Files.walkFileTree(templateDir, new FileUtils.Copy(templateDir, modulePath));
+            Files.walkFileTree(tempDirTest, new FileUtils.Copy(tempDirTest, modulePath));
+        } else {
+            Files.walkFileTree(templateDir, new FileUtils.Copy(templateDir, modulePath));
+        }
     }
 
     /**

@@ -8,7 +8,7 @@ function beforeSuiteFunc() {
     io:println("I'm the before suite function!");
 }
 
-# Test function
+// Test function
 
 @test:Config {}
 function testFunction() {
@@ -17,16 +17,16 @@ function testFunction() {
     test:assertEquals("Hello, John", welcomeMsg);
 }
 
-# Negative Test function
+// Negative Test function
 
 @test:Config {}
 function negativeTestFunction() {
     string name = "";
     string welcomeMsg = hello(name);
-    test:assertEquals("Name is empty!", welcomeMsg);
+    test:assertEquals("Hello, World!", welcomeMsg);
 }
 
-# After Suite Function
+// After Suite Function
 
 @test:AfterSuite
 function afterSuiteFunc() {
