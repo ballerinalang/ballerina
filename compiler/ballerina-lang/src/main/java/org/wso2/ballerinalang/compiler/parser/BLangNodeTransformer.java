@@ -1188,6 +1188,7 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
         anonClass.setName(anonTypeGenName);
         anonClass.flagSet.add(Flag.PUBLIC);
         anonClass.flagSet.add(Flag.OBJECT_CTOR);
+        anonClass.isObjectContructorDecl = true;
 
         Optional<TypeDescriptorNode> typeReference = objectConstructorExpressionNode.typeReference();
         typeReference.ifPresent(typeReferenceNode -> {
@@ -1213,6 +1214,7 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
             }
         }
 
+//        addToTop(anonClass);
         BLangIdentifier identifier = (BLangIdentifier) TreeBuilder.createIdentifierNode();
         BLangUserDefinedType userDefinedType = createUserDefinedType(pos, identifier, anonClass.name);
 
@@ -3833,7 +3835,8 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
         IdentifierNode anonTypeGenName = createIdentifier(pos, genName);
         anonClassDef.setName(anonTypeGenName);
         anonClassDef.flagSet.add(Flag.PUBLIC);
-        anonClassDef.flagSet.add(Flag.OBJECT_CTOR);
+        //anonClassDef.flagSet.add(Flag.OBJECT_CTOR);
+//        anonClassDef.isObjectContructorDecl = true;
 
         Optional<TypeDescriptorNode> typeReference = serviceDeclarationNode.typeDescriptor();
         typeReference.ifPresent(typeReferenceNode -> {

@@ -41,10 +41,12 @@ import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BVarSymbol;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangConstant;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangLambdaFunction;
+import org.wso2.ballerinalang.util.Flags;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -73,7 +75,7 @@ public class BLangPackage extends BLangNode implements PackageNode {
     // Queue to maintain lambda functions so that we can visit all lambdas at the end of the semantic phase
     public Queue<BLangLambdaFunction> lambdaFunctions = new ArrayDeque<>();
     public List<BLangClassDefinition> classDefinitions;
-    public List<BLangClassDefinition> classDefinitionsForObjectCtors;
+    public Map<BSymbol, BLangClassDefinition> objectCtorsMap;
 
     // Hold global variable dependencies identified in DataflowAnalyzer.
     public Map<BSymbol, Set<BVarSymbol>> globalVariableDependencies;
@@ -100,7 +102,7 @@ public class BLangPackage extends BLangNode implements PackageNode {
         this.typeDefinitions = new ArrayList<>();
         this.annotations = new ArrayList<>();
         this.classDefinitions = new ArrayList<>();
-        this.classDefinitionsForObjectCtors = new ArrayList<>();
+        this.objectCtorsMap = new HashMap<>();
 
         this.objAttachedFunctions = new ArrayList<>();
         this.topLevelNodes = new ArrayList<>();
@@ -266,6 +268,11 @@ public class BLangPackage extends BLangNode implements PackageNode {
     }
 
     public void addClassDefinition(BLangClassDefinition classDefNode) {
+        if (classDefNode.flagSet.contains(Flags.OBJECT_CTOR)) {
+            if (this.objectCtorsMap.isEmpty()) {
+                System.out.println("KRV EMPTY");
+            }
+        }
         this.topLevelNodes.add(classDefNode);
         this.classDefinitions.add(classDefNode);
     }
