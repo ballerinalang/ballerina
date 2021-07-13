@@ -20,6 +20,7 @@ package org.wso2.ballerinalang.compiler.desugar;
 import io.ballerina.tools.diagnostics.Location;
 import org.ballerinalang.model.elements.Flag;
 import org.ballerinalang.model.tree.NodeKind;
+import org.ballerinalang.model.tree.TopLevelNode;
 import org.ballerinalang.model.tree.expressions.RecordLiteralNode;
 import org.wso2.ballerinalang.compiler.semantics.analyzer.Types;
 import org.wso2.ballerinalang.compiler.semantics.model.Scope;
@@ -213,9 +214,16 @@ public class ClosureDesugar extends BLangNodeVisitor {
         SymbolEnv pkgEnv = this.symTable.pkgEnvMap.get(pkgNode.symbol);
 
         // Process nodes that are not lambdas
-        pkgNode.topLevelNodes.stream().filter(pkgLevelNode -> !(pkgLevelNode.getKind() == NodeKind.FUNCTION
-                && ((BLangFunction) pkgLevelNode).flagSet.contains(Flag.LAMBDA))).forEach(
-                topLevelNode -> rewrite((BLangNode) topLevelNode, pkgEnv));
+        for (TopLevelNode pkgLevelNode : pkgNode.topLevelNodes) {
+            if (pkgLevelNode.getKind() == NodeKind.FUNCTION
+                    && ((BLangFunction) pkgLevelNode).flagSet.contains(Flag.LAMBDA)) {
+                continue;
+            }
+            if ((pkgLevelNode.getKind() == NodeKind.CLASS_DEFN && ((BLangClassDefinition) pkgLevelNode).isObjectContructorDecl)) {
+                continue;
+            }
+            rewrite((BLangNode) pkgLevelNode, pkgEnv);
+        }
 
         // Reverse the lambdas since in Desugar they are visited from inner to outer lambdas.
         List<BLangLambdaFunction> lambdasCollected = new ArrayList<>(pkgNode.lambdaFunctions);
@@ -233,16 +241,17 @@ public class ClosureDesugar extends BLangNodeVisitor {
             if (typeDef.typeNode.getKind() == NodeKind.RECORD_TYPE) {
                 updateRecordInitFunction(typeDef);
             }
-            if (typeDef.typeNode.getKind() == NodeKind.OBJECT_TYPE) {
-                updateObjectInitFunction(typeDef);
+        }
+        for (BLangClassDefinition classDef : pkgNode.classDefinitions) {
+            if (classDef.isObjectContructorDecl) {
+                updateClassClosureMap(classDef);
             }
         }
-
         result = pkgNode;
     }
 
-    private void updateObjectInitFunction(BLangTypeDefinition typeDef) {
-
+    private void updateClassClosureMap(BLangClassDefinition classDef) {
+        rewrite(classDef, classDef.capturedClosureEnv);
     }
 
     @Override
@@ -551,7 +560,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
         }
         SymbolEnv symbolEnv = env.createClone();
         BLangFunction enclInvokable = (BLangFunction) classDefinition.capturedClosureEnv.enclInvokable;
-        var enclMapSymbols = collectClosureMapSymbols(classDefinition.capturedClosureEnv, enclInvokable, false);
+        classDefinition.enclMapSymbols = collectClosureMapSymbols(classDefinition.capturedClosureEnv, enclInvokable, false);
         result = classDefinition;
     }
 

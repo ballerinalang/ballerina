@@ -29,12 +29,14 @@ import org.ballerinalang.model.tree.VariableNode;
 import org.ballerinalang.model.tree.types.TypeNode;
 import org.wso2.ballerinalang.compiler.semantics.model.SymbolEnv;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.BVarSymbol;
 import org.wso2.ballerinalang.compiler.tree.types.BLangType;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Represent class definition.
@@ -58,6 +60,7 @@ public class BLangClassDefinition extends BLangNode implements ClassDefinition {
     public boolean isServiceDecl;
     public boolean isObjectContructorDecl;
     public SymbolEnv capturedClosureEnv;
+    public TreeMap<Integer, BVarSymbol> enclMapSymbols;
 
     public BLangClassDefinition() {
         this.functions = new ArrayList<>();
