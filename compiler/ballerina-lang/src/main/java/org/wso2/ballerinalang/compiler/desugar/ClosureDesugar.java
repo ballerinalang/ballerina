@@ -296,7 +296,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangBlockFunctionBody body) {
-         SymbolEnv blockEnv = SymbolEnv.createFuncBodyEnv(body, env);
+        SymbolEnv blockEnv = SymbolEnv.createFuncBodyEnv(body, env);
         blockClosureMapCount++;
         body.stmts = rewriteStmt(body.stmts, blockEnv);
 
@@ -545,6 +545,13 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangClassDefinition classDefinition) {
+        if (!classDefinition.isObjectContructorDecl) {
+            result = classDefinition;
+            return;
+        }
+        SymbolEnv symbolEnv = env.createClone();
+        BLangFunction enclInvokable = (BLangFunction) classDefinition.capturedClosureEnv.enclInvokable;
+        var enclMapSymbols = collectClosureMapSymbols(classDefinition.capturedClosureEnv, enclInvokable, false);
         result = classDefinition;
     }
 

@@ -483,6 +483,9 @@ public class Desugar extends BLangNodeVisitor {
             if (topLevelNode.getKind() != NodeKind.CLASS_DEFN) {
                 continue;
             }
+            if (((BLangClassDefinition) topLevelNode).isObjectContructorDecl) {
+                //continue;
+            }
             addClassMemberFunctionsToTopLevel(pkgNode, env, (BLangClassDefinition) topLevelNode);
         }
     }

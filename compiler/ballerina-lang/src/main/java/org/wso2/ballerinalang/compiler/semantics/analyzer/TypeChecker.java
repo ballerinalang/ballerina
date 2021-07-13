@@ -2482,13 +2482,12 @@ public class TypeChecker extends BLangNodeVisitor {
      * enclosing invokable node's environment, which are outside of the scope of a lambda function.
      */
     private SymbolEnv findEnclosingInvokableEnv(SymbolEnv env, BLangInvokableNode encInvokable) {
-        if (env.enclEnv.node != null && env.enclEnv.node.getKind() == NodeKind.ARROW_EXPR) {
-            // if enclosing env's node is arrow expression
-            return env.enclEnv;
+        if (env.enclEnv.node == null) {
+            return env;
         }
-
-        if (env.enclEnv.node != null && (env.enclEnv.node.getKind() == NodeKind.ON_FAIL)) {
-            // if enclosing env's node is a transaction, retry or a on-fail
+        NodeKind kind = env.enclEnv.node.getKind();
+        if (kind == NodeKind.ARROW_EXPR || kind == NodeKind.ON_FAIL || kind == NodeKind.CLASS_DEFN) {
+            // TODO : check if we need ON_FAIL now
             return env.enclEnv;
         }
 
@@ -2499,14 +2498,11 @@ public class TypeChecker extends BLangNodeVisitor {
     }
 
     private SymbolEnv findEnclosingInvokableEnv(SymbolEnv env, BLangRecordTypeNode recordTypeNode) {
-        if (env.enclEnv.node != null && env.enclEnv.node.getKind() == NodeKind.ARROW_EXPR) {
-            // if enclosing env's node is arrow expression
-            return env.enclEnv;
-        }
-
-        if (env.enclEnv.node != null && (env.enclEnv.node.getKind() == NodeKind.ON_FAIL)) {
-            // if enclosing env's node is a transaction, retry or on-fail
-            return env.enclEnv;
+        if (env.enclEnv.node != null) {
+            NodeKind kind = env.enclEnv.node.getKind();
+            if (kind == NodeKind.ARROW_EXPR || kind == NodeKind.ON_FAIL || kind == NodeKind.CLASS_DEFN) {
+                return env.enclEnv;
+            }
         }
 
         if (env.enclType != null && env.enclType == recordTypeNode) {
@@ -3201,6 +3197,7 @@ public class TypeChecker extends BLangNodeVisitor {
         BObjectType actualObjectType = (BObjectType) actualType;
         List<BLangType> typeRefs = classNode.typeRefs;
         SymbolEnv typeDefEnv = SymbolEnv.createObjectConstructorObjectEnv(classNode, classNode.symbol.scope, env);
+        classNode.capturedClosureEnv = typeDefEnv;
         if (Symbols.isFlagOn(expType.flags, Flags.READONLY)) {
             handleObjectConstrExprForReadOnly(objectCtorExpression, actualObjectType, typeDefEnv, false);
         } else if (!typeRefs.isEmpty() && Symbols.isFlagOn(typeRefs.get(0).getBType().flags,
@@ -5680,6 +5677,7 @@ public class TypeChecker extends BLangNodeVisitor {
                 ((BLangFunction) encInvokable).closureVarSymbols.add(new ClosureVarSymbol(resolvedSymbol, pos));
             }
         }
+        // TODO: make this work. Why the variable does not have OCR class scope as its parent scope
 //        if (encInvokable != null && env.node.getKind() == NodeKind.
 //                && !isFunctionArgument(symbol, encInvokable.requiredParams)) {
 //            SymbolEnv encInvokableEnv = findEnclosingInvokableEnv(env, encInvokable);
@@ -5707,13 +5705,12 @@ public class TypeChecker extends BLangNodeVisitor {
                 ((BLangFunction) encInvokable).closureVarSymbols.add(new ClosureVarSymbol(resolvedSymbol, pos));
             }
         }
-        // a transaction block to mark it as a closure, blocks inside transactions are desugared into functions later.
+        // TODO: refactor into parent child without looping
         BLangNode node = env.node;
         SymbolEnv cEnv = env;
         while (node != null && node.getKind() != NodeKind.FUNCTION) {
             if (node.getKind() == NodeKind.CLASS_DEFN &&
-                    ((BLangClassDefinition) node).flagSet.contains(Flag.OBJECT_CTOR)) {
-                BLangClassDefinition classDef = (BLangClassDefinition) node;
+                    ((BLangClassDefinition) node).isObjectContructorDecl) {
                 SymbolEnv encInvokableEnv = findEnclosingInvokableEnv(env, encInvokable);
                 BSymbol resolvedSymbol = symResolver.lookupClosureVarSymbol(encInvokableEnv, symbol.name,
                         SymTag.VARIABLE);

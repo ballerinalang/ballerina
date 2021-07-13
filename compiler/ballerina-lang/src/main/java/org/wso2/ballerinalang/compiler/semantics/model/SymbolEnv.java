@@ -156,7 +156,7 @@ public class SymbolEnv {
         objectEnv.enclEnv = env.enclEnv != null ? env.enclEnv.createClone() : null;
         objectEnv.enclPkg = env.enclPkg;
         objectEnv.envCount = env.envCount + 1;
-        env.copyTo(objectEnv);
+        objectEnv.enclInvokable = env.enclInvokable;
         return objectEnv;
     }
 
