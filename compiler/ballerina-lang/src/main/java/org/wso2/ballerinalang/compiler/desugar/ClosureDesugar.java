@@ -237,7 +237,9 @@ public class ClosureDesugar extends BLangNodeVisitor {
         }
 
         // Update function parameters.
-        pkgNode.functions.forEach(this::updateFunctionParams);
+        for (BLangFunction function : pkgNode.functions) {
+            updateFunctionParams(function);
+        }
         for (BLangTypeDefinition typeDef : pkgNode.typeDefinitions) {
             if (typeDef.typeNode.getKind() == NodeKind.RECORD_TYPE) {
                 updateRecordInitFunction(typeDef);
