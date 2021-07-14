@@ -818,7 +818,7 @@ public class SymbolEnter extends BLangNodeVisitor {
         if (symResolver.checkForUniqueSymbol(classDefinition.pos, env, tSymbol)) {
             env.scope.define(tSymbol.name, tSymbol);
         }
-//        return;
+        // TODO : check
         //env.scope.define(tSymbol.name, tSymbol);
     }
 
