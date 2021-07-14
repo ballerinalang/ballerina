@@ -17,7 +17,6 @@
  */
 package org.wso2.ballerinalang.compiler.desugar;
 
-import io.ballerina.tools.diagnostics.Location;
 import org.ballerinalang.model.elements.Flag;
 import org.ballerinalang.model.tree.NodeKind;
 import org.ballerinalang.model.tree.TopLevelNode;
@@ -422,9 +421,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
                                                                    mapSymbol.type, emptyRecord, mapSymbol);
         mapVar.typeNode = ASTBuilderUtil.createTypeNode(mapSymbol.type);
         BLangSimpleVariableDef mapVarDef = ASTBuilderUtil.createVariableDef(symTable.builtinPos, mapVar);
-        // Add the closure map var as the first statement in the sequence statement.
-        mapVarDef = desugar.rewrite(mapVarDef, blockEnv);
-        stmts.add(0, mapVarDef);
+        return desugar.rewrite(mapVarDef, blockEnv);
     }
 
     @Override
@@ -512,7 +509,14 @@ public class ClosureDesugar extends BLangNodeVisitor {
         return function.mapSymbol;
     }
 
-    private BVarSymbol getMapSymbol(BLangNode node) {
+    private BVarSymbol createMapSymbolIfAbsent(BLangClassDefinition classDef, int closureMapCount) {
+        if (classDef.mapSymbol == null) {
+            classDef.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + closureMapCount, env);
+        }
+        return classDef.mapSymbol;
+    }
+
+    private static BVarSymbol getMapSymbol(BLangNode node) {
         switch (node.getKind()) {
             case BLOCK_FUNCTION_BODY:
                 return ((BLangBlockFunctionBody) node).mapSymbol;
@@ -521,6 +525,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
             case FUNCTION:
             case RESOURCE_FUNC:
                 return ((BLangFunction) node).mapSymbol;
+            case CLASS_DEFN:
+                return ((BLangClassDefinition) node).mapSymbol;
             default:
                 return CLOSURE_MAP_NOT_FOUND;
         }
@@ -857,9 +863,11 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangTableMultiKeyExpr tableMultiKeyExpr) {
-        List<BLangExpression> exprList = new ArrayList<>();
-        tableMultiKeyExpr.multiKeyIndexExprs.forEach(expression -> exprList.add(rewriteExpr(expression)));
-        tableMultiKeyExpr.multiKeyIndexExprs = exprList;
+//        List<BLangExpression> exprList = new ArrayList<>(tableMultiKeyExpr.multiKeyIndexExprs.size());
+//        tableMultiKeyExpr.multiKeyIndexExprs.forEach(expression -> exprList.add(rewriteExpr(expression)));
+//        tableMultiKeyExpr.multiKeyIndexExprs = exprList;
+        // TODO: check
+        rewriteExprs(tableMultiKeyExpr.multiKeyIndexExprs);
         result = tableMultiKeyExpr;
     }
 
