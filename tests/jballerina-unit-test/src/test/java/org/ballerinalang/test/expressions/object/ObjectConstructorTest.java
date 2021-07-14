@@ -33,57 +33,19 @@ import static org.ballerinalang.test.BAssertUtil.validateError;
 @Test
 public class ObjectConstructorTest {
 
-    private CompileResult compiledConstructedObjects;
+    private CompileResult compiledConstructedObjects, closures;
 
     @BeforeClass
     public void setup() {
         compiledConstructedObjects = BCompileUtil.compile(
                 "test-src/expressions/object/object_constructor_expression.bal");
+        closures = BCompileUtil.compile(
+                "test-src/expressions/object/object_closures.bal");
     }
 
     @Test
-    public void testObjectCreationViaObjectConstructor() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectCreationViaObjectConstructor");
-    }
-
-    @Test
-    public void testObjectConstructorAnnotationAttachment() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorAnnotationAttachment");
-    }
-
-    @Test
-    public void testObjectConstructorObjectFunctionInvocation() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorObjectFunctionInvocation");
-    }
-
-    @Test
-    public void testObjectConstructorIncludedMethod() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorIncludedMethod");
-    }
-
-    @Test
-    public void testObjectConstructorWithDistintExpectedType() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDistintExpectedType");
-    }
-
-    @Test
-    public void testObjectConstructorWithDistintTypeReference() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDistintTypeReference");
-    }
-
-    @Test
-    public void testObjectConstructorWithDistintTypeReferenceVar() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDistintTypeReferenceVar");
-    }
-
-    @Test
-    public void testObjectConstructorWithDefiniteTypeAndWithoutReference() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDefiniteTypeAndWithoutReference");
-    }
-
-    @Test
-    public void testObjectConstructorExprWithReadOnlyCET() {
-        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorExprWithReadOnlyCET");
+    public void testObjectClosures() {
+        BRunUtil.invoke(closures, "foo");
     }
 
     @Test
@@ -135,5 +97,6 @@ public class ObjectConstructorTest {
     @AfterClass
     public void tearDown() {
         compiledConstructedObjects = null;
+        closures = null;
     }
 }
