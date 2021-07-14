@@ -61,6 +61,7 @@ public class BLangClassDefinition extends BLangNode implements ClassDefinition {
     public boolean isObjectContructorDecl;
     public SymbolEnv capturedClosureEnv;
     public TreeMap<Integer, BVarSymbol> enclMapSymbols;
+    public BVarSymbol mapSymbol;
 
     public BLangClassDefinition() {
         this.functions = new ArrayList<>();
