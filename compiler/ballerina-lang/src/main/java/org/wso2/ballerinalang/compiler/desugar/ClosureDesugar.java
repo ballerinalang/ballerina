@@ -173,9 +173,10 @@ import static org.wso2.ballerinalang.compiler.semantics.model.Scope.NOT_FOUND_EN
 public class ClosureDesugar extends BLangNodeVisitor {
     private static final CompilerContext.Key<ClosureDesugar> CLOSURE_DESUGAR_KEY = new CompilerContext.Key<>();
 
-    private static final String BLOCK_MAP_SYM_NAME = "$map$block$";
-    private static final String FUNCTION_MAP_SYM_NAME = "$map$func$";
-    private static final String PARAMETER_MAP_NAME = "$paramMap$";
+    private static final String BLOCK_MAP_SYM_NAME = "$map$block$" + UNDERSCORE;
+    private static final String FUNCTION_MAP_SYM_NAME = "$map$func$" + UNDERSCORE;
+    private static final String OBJECT_CTOR_MAP_SYM_NAME = "$map$objectCtor$" + UNDERSCORE;
+    private static final String PARAMETER_MAP_NAME = "$paramMap$" + UNDERSCORE;
     private static final BVarSymbol CLOSURE_MAP_NOT_FOUND;
 
     private SymbolTable symTable;
@@ -311,7 +312,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
         // Add block map to the 0th position if a block map symbol is there.
         if (body.mapSymbol != null) {
-            addClosureMap(body.stmts, body.pos, body.mapSymbol, blockEnv);
+            body.stmts.add(0, getClosureMap(body.mapSymbol, blockEnv));
         }
 
         result = body;
@@ -329,7 +330,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
      * @param funcEnv  function environment
      */
     private void createFunctionMap(BLangFunction funcNode, SymbolEnv funcEnv) {
-        funcNode.mapSymbol = createMapSymbol(FUNCTION_MAP_SYM_NAME + UNDERSCORE + funClosureMapCount, funcEnv);
+        funcNode.mapSymbol = createMapSymbol(FUNCTION_MAP_SYM_NAME  + funClosureMapCount, funcEnv);
         BLangRecordLiteral emptyRecord = ASTBuilderUtil.createEmptyRecordLiteral(funcNode.pos, symTable.mapType);
         BLangSimpleVariable mapVar = ASTBuilderUtil.createVariable(funcNode.pos, funcNode.mapSymbol.name.value,
                                                                    funcNode.mapSymbol.type, emptyRecord,
@@ -350,7 +351,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
      *
      * @param funcNode function node
      */
-    private void updateFunctionParams(BLangFunction funcNode) {
+    private static void updateFunctionParams(BLangFunction funcNode) {
         // Add closure params to the required param list if there are any.
         BInvokableSymbol dupFuncSymbol = ASTBuilderUtil.duplicateInvokableSymbol(funcNode.symbol);
         funcNode.symbol = dupFuncSymbol;
@@ -365,7 +366,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
         }
     }
 
-    private void updateRecordInitFunction(BLangTypeDefinition typeDef) {
+    private static void updateRecordInitFunction(BLangTypeDefinition typeDef) {
         BLangRecordTypeNode recordTypeNode = (BLangRecordTypeNode) typeDef.typeNode;
         BInvokableSymbol initFnSym = recordTypeNode.initFunction.symbol;
         BRecordTypeSymbol recordTypeSymbol = (BRecordTypeSymbol) typeDef.symbol;
@@ -406,14 +407,14 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
         // Add block map to the 0th position if a block map symbol is there.
         if (blockNode.mapSymbol != null) {
-            addClosureMap(blockNode.stmts, blockNode.pos, blockNode.mapSymbol, blockEnv);
+            // Add the closure map var as the first statement in the sequence statement.
+            blockNode.stmts.add(0, getClosureMap(blockNode.mapSymbol, blockEnv));
         }
 
         result = blockNode;
     }
 
-    private void addClosureMap(List<BLangStatement> stmts, Location pos, BVarSymbol mapSymbol,
-                               SymbolEnv blockEnv) {
+    private BLangSimpleVariableDef getClosureMap(BVarSymbol mapSymbol, SymbolEnv blockEnv) {
         BLangRecordLiteral emptyRecord = ASTBuilderUtil.createEmptyRecordLiteral(symTable.builtinPos, mapSymbol.type);
         BLangSimpleVariable mapVar = ASTBuilderUtil.createVariable(symTable.builtinPos, mapSymbol.name.value,
                                                                    mapSymbol.type, emptyRecord, mapSymbol);
@@ -472,35 +473,39 @@ public class ClosureDesugar extends BLangNodeVisitor {
     }
 
     private BVarSymbol createMapSymbolIfAbsent(BLangNode node, int closureMapCount) {
-        if (node.getKind() == NodeKind.BLOCK_FUNCTION_BODY) {
-            return createMapSymbolIfAbsent((BLangBlockFunctionBody) node, closureMapCount);
-        } else if (node.getKind() == NodeKind.BLOCK) {
-            return createMapSymbolIfAbsent((BLangBlockStmt) node, closureMapCount);
-        } else if (node.getKind() == NodeKind.FUNCTION) {
-            return createMapSymbolIfAbsent((BLangFunction) node, closureMapCount);
-        } else if (node.getKind() == NodeKind.RESOURCE_FUNC) {
-            return createMapSymbolIfAbsent((BLangResourceFunction) node, closureMapCount);
+        NodeKind kind = node.getKind();
+        switch (kind) {
+            case BLOCK_FUNCTION_BODY:
+                return createMapSymbolIfAbsent((BLangBlockFunctionBody) node, closureMapCount);
+            case BLOCK:
+                return createMapSymbolIfAbsent((BLangBlockStmt) node, closureMapCount);
+            case FUNCTION:
+                return createMapSymbolIfAbsent((BLangFunction) node, closureMapCount);
+            case RESOURCE_FUNC:
+                return createMapSymbolIfAbsent((BLangResourceFunction) node, closureMapCount);
+            case CLASS_DEFN:
+                return createMapSymbolIfAbsent((BLangClassDefinition) node, closureMapCount);
         }
         return null;
     }
 
     private BVarSymbol createMapSymbolIfAbsent(BLangBlockFunctionBody body, int closureMapCount) {
         if (body.mapSymbol == null) {
-            body.mapSymbol = createMapSymbol(BLOCK_MAP_SYM_NAME + UNDERSCORE + closureMapCount, env);
+            body.mapSymbol = createMapSymbol(BLOCK_MAP_SYM_NAME + closureMapCount, env);
         }
         return body.mapSymbol;
     }
 
     private BVarSymbol createMapSymbolIfAbsent(BLangBlockStmt blockStmt, int closureMapCount) {
         if (blockStmt.mapSymbol == null) {
-            blockStmt.mapSymbol = createMapSymbol(BLOCK_MAP_SYM_NAME + UNDERSCORE + closureMapCount, env);
+            blockStmt.mapSymbol = createMapSymbol(BLOCK_MAP_SYM_NAME + closureMapCount, env);
         }
         return blockStmt.mapSymbol;
     }
 
     private BVarSymbol createMapSymbolIfAbsent(BLangFunction function, int closureMapCount) {
         if (function.mapSymbol == null) {
-            function.mapSymbol = createMapSymbol(FUNCTION_MAP_SYM_NAME + UNDERSCORE + closureMapCount, env);
+            function.mapSymbol = createMapSymbol(FUNCTION_MAP_SYM_NAME + closureMapCount, env);
         }
         return function.mapSymbol;
     }
@@ -530,11 +535,11 @@ public class ClosureDesugar extends BLangNodeVisitor {
     @Override
     public void visit(BLangInvocation.BLangAttachedFunctionInvocation iExpr) {
         iExpr.expr = rewriteExpr(iExpr.expr);
-        if (iExpr.requiredArgs.size() > 0) {
+        if (!iExpr.requiredArgs.isEmpty()) {
             iExpr.requiredArgs.set(0, iExpr.expr);
         }
-        iExpr.requiredArgs = rewriteExprs(iExpr.requiredArgs);
-        iExpr.restArgs = rewriteExprs(iExpr.restArgs);
+        rewriteExprs(iExpr.requiredArgs);
+        rewriteExprs(iExpr.restArgs);
         result = iExpr;
     }
 
@@ -558,7 +563,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
             result = classDefinition;
             return;
         }
-        SymbolEnv symbolEnv = env.createClone();
+        //SymbolEnv symbolEnv = env.createClone();
         BLangFunction enclInvokable = (BLangFunction) classDefinition.capturedClosureEnv.enclInvokable;
         classDefinition.enclMapSymbols = collectClosureMapSymbols(classDefinition.capturedClosureEnv, enclInvokable, false);
         result = classDefinition;
@@ -778,7 +783,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangListConstructorExpr listConstructorExpr) {
-        listConstructorExpr.exprs = rewriteExprs(listConstructorExpr.exprs);
+        rewriteExprs(listConstructorExpr.exprs);
         result = listConstructorExpr;
     }
 
@@ -790,13 +795,13 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangListConstructorExpr.BLangJSONArrayLiteral jsonArrayLiteral) {
-        jsonArrayLiteral.exprs = rewriteExprs(jsonArrayLiteral.exprs);
+        rewriteExprs(jsonArrayLiteral.exprs);
         result = jsonArrayLiteral;
     }
 
     @Override
     public void visit(BLangListConstructorExpr.BLangTupleLiteral tupleLiteral) {
-        tupleLiteral.exprs = rewriteExprs(tupleLiteral.exprs);
+        rewriteExprs(tupleLiteral.exprs);
         result = tupleLiteral;
     }
 
@@ -836,8 +841,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
     @Override
     public void visit(BLangInvocation iExpr) {
         iExpr.expr = rewriteExpr(iExpr.expr);
-        iExpr.requiredArgs = rewriteExprs(iExpr.requiredArgs);
-        iExpr.restArgs = rewriteExprs(iExpr.restArgs);
+        rewriteExprs(iExpr.requiredArgs);
+        rewriteExprs(iExpr.restArgs);
         result = iExpr;
     }
 
@@ -954,8 +959,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
             } else if (isWorker) {
                 // Create mapSymbol in outer function node when it contain workers and it's not already created.
                 // We need this to allow worker identifier to be used as a future.
-                mapSym = createMapSymbolIfAbsent(env.node, blockClosureMapCount);
-                enclMapSymbols.putIfAbsent(symbolEnv.envCount, mapSym);
+                BVarSymbol mapSymbolIfAbsent = createMapSymbolIfAbsent(env.node, blockClosureMapCount);
+                enclMapSymbols.putIfAbsent(symbolEnv.envCount, mapSymbolIfAbsent);
             }
 
             symbolEnv = symbolEnv.enclEnv;
@@ -984,8 +989,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
     public void visit(BLangXMLElementLiteral xmlElementLiteral) {
         xmlElementLiteral.startTagName = rewriteExpr(xmlElementLiteral.startTagName);
         xmlElementLiteral.endTagName = rewriteExpr(xmlElementLiteral.endTagName);
-        xmlElementLiteral.modifiedChildren = rewriteExprs(xmlElementLiteral.modifiedChildren);
-        xmlElementLiteral.attributes = rewriteExprs(xmlElementLiteral.attributes);
+        rewriteExprs(xmlElementLiteral.modifiedChildren);
+        rewriteExprs(xmlElementLiteral.attributes);
         result = xmlElementLiteral;
     }
 
@@ -1096,7 +1101,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
             // It is resolved from a parameter map.
             // Add parameter map symbol if one is not added.
             ((BLangFunction) env.enclInvokable).paramClosureMap.putIfAbsent(absoluteLevel, createMapSymbol(
-                    PARAMETER_MAP_NAME + UNDERSCORE + absoluteLevel, env));
+                    PARAMETER_MAP_NAME + absoluteLevel, env));
 
             // Update the closure vars.
             updateClosureVars(localVarRef, ((BLangFunction) env.enclInvokable).paramClosureMap.get(absoluteLevel));
@@ -1126,13 +1131,14 @@ public class ClosureDesugar extends BLangNodeVisitor {
      * @param varSymbol symbol of the closure
      * @return level it was resolved
      */
-    private int findResolvedLevel(SymbolEnv symbolEnv, BVarSymbol varSymbol) {
-        while (symbolEnv != null && symbolEnv.node.getKind() != NodeKind.PACKAGE) {
-            Scope.ScopeEntry entry = symbolEnv.scope.lookup(varSymbol.name);
-            if (entry != NOT_FOUND_ENTRY && varSymbol == entry.symbol && varSymbol.owner == symbolEnv.scope.owner) {
-                return symbolEnv.envCount;
+    private static int findResolvedLevel(SymbolEnv symbolEnv, BVarSymbol varSymbol) {
+        SymbolEnv resolvedSymbolEnv = symbolEnv;
+        while (resolvedSymbolEnv != null && resolvedSymbolEnv.node.getKind() != NodeKind.PACKAGE) {
+            Scope.ScopeEntry entry = resolvedSymbolEnv.scope.lookup(varSymbol.name);
+            if (entry != NOT_FOUND_ENTRY && varSymbol == entry.symbol && varSymbol.owner == resolvedSymbolEnv.scope.owner) {
+                return resolvedSymbolEnv.envCount;
             }
-            symbolEnv = symbolEnv.enclEnv;
+            resolvedSymbolEnv = resolvedSymbolEnv.enclEnv;
         }
         // 0 is returned if it was not found.
         return 0;
@@ -1167,7 +1173,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
                 return;
             }
             bLangFunction.paramClosureMap
-                    .put(resolvedLevel, createMapSymbol(PARAMETER_MAP_NAME + UNDERSCORE + resolvedLevel, symbolEnv));
+                    .put(resolvedLevel, createMapSymbol(PARAMETER_MAP_NAME + resolvedLevel, symbolEnv));
 
             symbolEnv = symbolEnv.enclEnv;
         }
@@ -1360,8 +1366,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
     @Override
     public void visit(BLangInvocation.BFunctionPointerInvocation fpInvocation) {
         fpInvocation.expr = rewriteExpr(fpInvocation.expr);
-        fpInvocation.requiredArgs = rewriteExprs(fpInvocation.requiredArgs);
-        fpInvocation.restArgs = rewriteExprs(fpInvocation.restArgs);
+        rewriteExprs(fpInvocation.requiredArgs);
+        rewriteExprs(fpInvocation.restArgs);
         result = fpInvocation;
     }
 
@@ -1439,8 +1445,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
     @Override
     public void visit(BLangInvocation.BLangActionInvocation aIExpr) {
         aIExpr.expr = rewriteExpr(aIExpr.expr);
-        aIExpr.requiredArgs = rewriteExprs(aIExpr.requiredArgs);
-        aIExpr.restArgs = rewriteExprs(aIExpr.restArgs);
+        rewriteExprs(aIExpr.requiredArgs);
+        rewriteExprs(aIExpr.restArgs);
         result = aIExpr;
     }
 
