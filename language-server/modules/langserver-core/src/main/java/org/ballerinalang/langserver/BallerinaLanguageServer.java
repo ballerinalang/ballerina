@@ -38,6 +38,7 @@ import org.ballerinalang.langserver.extensions.ballerina.packages.BallerinaPacka
 import org.ballerinalang.langserver.extensions.ballerina.packages.BallerinaPackageServiceImpl;
 import org.ballerinalang.langserver.extensions.ballerina.symbol.BallerinaSymbolService;
 import org.ballerinalang.langserver.extensions.ballerina.symbol.BallerinaSymbolServiceImpl;
+import org.ballerinalang.langserver.task.BackgroundTaskService;
 import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.DidChangeWatchedFilesRegistrationOptions;
@@ -182,6 +183,7 @@ public class BallerinaLanguageServer extends AbstractExtendedLanguageServer
         for (ExtendedLanguageServerService service : extendedServices) {
             service.shutdown();
         }
+        BackgroundTaskService.getInstance(serverContext).shutdown();
         return CompletableFuture.supplyAsync(Object::new);
     }
 
