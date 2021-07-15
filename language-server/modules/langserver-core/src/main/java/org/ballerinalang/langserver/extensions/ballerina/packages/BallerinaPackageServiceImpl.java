@@ -24,6 +24,7 @@ import io.ballerina.compiler.api.symbols.ServiceAttachPointKind;
 import io.ballerina.compiler.api.symbols.ServiceDeclarationSymbol;
 import io.ballerina.compiler.api.symbols.Symbol;
 import io.ballerina.compiler.api.symbols.SymbolKind;
+import io.ballerina.projects.BuildOptionsBuilder;
 import io.ballerina.projects.Module;
 import io.ballerina.projects.Package;
 import io.ballerina.projects.Project;
@@ -94,12 +95,10 @@ public class BallerinaPackageServiceImpl implements BallerinaPackageService {
             JsonArray jsonPackages = new JsonArray();
             TextDocumentIdentifier[] documentIdentifiers = request.getDocumentIdentifiers();
             try {
-                Arrays.stream(documentIdentifiers).iterator().forEachRemaining(documentIdentifier -> {
-                    CommonUtil.getPathFromURI(documentIdentifier.getUri()).ifPresent(path -> {
-                        Project project = ProjectLoader.loadProject(path);
-                        jsonPackages.add(getPackageComponents(project));
-                    });
-                });
+                Arrays.stream(documentIdentifiers).iterator()
+                        .forEachRemaining(documentIdentifier -> CommonUtil.getPathFromURI(documentIdentifier.getUri())
+                                .flatMap(workspaceManager::project)
+                                .ifPresent(project -> jsonPackages.add(getPackageComponents(project))));
                 response.setProjectPackages(jsonPackages);
             } catch (Throwable e) {
                 String msg = "Operation 'ballerinaPackage/components' failed!";
