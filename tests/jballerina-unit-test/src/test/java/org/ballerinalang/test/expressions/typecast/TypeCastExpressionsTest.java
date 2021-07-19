@@ -342,6 +342,7 @@ public class TypeCastExpressionsTest {
     public Object[] futureCastTests() {
         return new String[] {
                 "testFutureWithoutFutureConstraintCastPositive",
+                "testFutureEqualityNegative",
                 "testFutureCastNegative",
                 "testFutureOfFutureValueCastNegative"
         };

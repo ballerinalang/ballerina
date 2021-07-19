@@ -384,6 +384,12 @@ function testFutureWithoutFutureConstraintCastPositive() {
     test:assertTrue(f1 === f2);
 }
 
+function testFutureEqualityNegative() {
+    future<Person> f1 = start getNewPerson();
+    future<Employee> f2 = start getNewEmployee();
+    test:assertFalse(f1 === f2);
+}
+
 function testFutureCastNegative() {
     future<int> s1 = start testFutureFunc();
     any a = s1;
@@ -414,6 +420,11 @@ function foo() returns future<int> {
 function getNewEmployee() returns Employee {
     Employee employee = {name: "John", id: 15634};
     return employee;
+}
+
+function getNewPerson() returns Person {
+    Person person = {name: "John"};
+    return person;
 }
 
 function testObjectCastPositive() returns boolean {
