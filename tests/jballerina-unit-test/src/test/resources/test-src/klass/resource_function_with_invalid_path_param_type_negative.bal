@@ -14,32 +14,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-type SType service object {
-    remote function onMesage(anydata data);
-    resource function get foo/bar();
-    resource function get foo/[string j]();
-};
+public isolated service class testClass {
+    private int testField = 12;
+    // only 'int', 'string', 'float', 'boolean', 'decimal' types are supported as path params, found 'other'
+    // undefined module 'module1'
+    // unknown type 'RequestMessage'
+    resource function name [module1:RequestMessage a]() {
 
-service class SClass {
-    *SType;
-}
-
-service class ROne {
-    resource function get foo() returns string {
-        return "foo";
     }
-}
-
-// Not having a implementation for "get foo" resource method is expected as resource method is not part of the obj type.
-service class RTwo {
-    *ROne;
-}
-
-type RType service object {
-    *ROne;
-    *RTwo;
-};
-
-service class RTypeImpl {
-    *RType;
 }
