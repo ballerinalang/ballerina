@@ -1217,6 +1217,7 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
 //        addToTop(anonClass);
         BLangIdentifier identifier = (BLangIdentifier) TreeBuilder.createIdentifierNode();
         BLangUserDefinedType userDefinedType = createUserDefinedType(pos, identifier, anonClass.name);
+        userDefinedType.flagSet.add(Flag.OBJECT_CTOR);
 
         BLangTypeInit initNode = (BLangTypeInit) TreeBuilder.createInitNode();
         initNode.pos = pos;
@@ -1229,8 +1230,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
 
         invocationNode.name = (BLangIdentifier) nameReference.name;
         invocationNode.pkgAlias = (BLangIdentifier) nameReference.pkgAlias;
-
-        initNode.argsExpr.addAll(invocationNode.argExprs);
         initNode.initInvocation = invocationNode;
 
         objectCtorExpression.typeInit = initNode;

@@ -6485,7 +6485,8 @@ public class Desugar extends BLangNodeVisitor {
     }
 
     public void visit(BLangTypeInit typeInitExpr) {
-        if (typeInitExpr.initInvocation.flagSet.contains(Flags.OBJECT_CTOR)) {
+        var userDefinedType = typeInitExpr.userDefinedType;
+        if (userDefinedType != null && userDefinedType.flagSet.contains(Flags.OBJECT_CTOR)) {
             System.out.println("Des This is OCE : " + typeInitExpr); // pass the local mapBlock - closure map as 
         }
         System.out.println("DEs This is not OCE : " + typeInitExpr);

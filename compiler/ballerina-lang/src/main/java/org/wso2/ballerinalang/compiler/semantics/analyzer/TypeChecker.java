@@ -3222,6 +3222,9 @@ public class TypeChecker extends BLangNodeVisitor {
         if (cIExpr.initInvocation.getBType() == null) {
             cIExpr.initInvocation.setBType(symTable.nilType);
         }
+        if (cIExpr.userDefinedType.flagSet.contains(Flag.OBJECT_CTOR)) {
+            System.out.println("TC : User defined type has OCE flag");
+        }
         cIExpr.initInvocation.addFlag(Flag.OBJECT_CTOR);
         BType actualTypeInitType = getObjectConstructorReturnType(actualType, cIExpr.initInvocation.getBType());
         resultType = types.checkType(cIExpr, actualTypeInitType, expType);
