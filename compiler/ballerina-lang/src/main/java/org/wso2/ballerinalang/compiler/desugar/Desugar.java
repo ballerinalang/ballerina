@@ -483,9 +483,6 @@ public class Desugar extends BLangNodeVisitor {
             if (topLevelNode.getKind() != NodeKind.CLASS_DEFN) {
                 continue;
             }
-            if (((BLangClassDefinition) topLevelNode).isObjectContructorDecl) {
-                //continue;
-            }
             addClassMemberFunctionsToTopLevel(pkgNode, env, (BLangClassDefinition) topLevelNode);
         }
     }
@@ -979,6 +976,8 @@ public class Desugar extends BLangNodeVisitor {
     private void desugarClassDefinitions(List<TopLevelNode> topLevelNodes) {
         for (int i = 0, topLevelNodesSize = topLevelNodes.size(); i < topLevelNodesSize; i++) {
             TopLevelNode topLevelNode = topLevelNodes.get(i);
+//            if (topLevelNode.getKind() == NodeKind.CLASS_DEFN &&
+//                            !((BLangClassDefinition) topLevelNode).isObjectContructorDecl) {
             if (topLevelNode.getKind() == NodeKind.CLASS_DEFN) {
                 ((BLangClassDefinition) topLevelNode).accept(this);
             }
@@ -1045,6 +1044,15 @@ public class Desugar extends BLangNodeVisitor {
             // skip if the field is already have an value set by the constructor.
             // we are creating an assignment to closures here need change them to self refs should we rewrite this
             // or skip and create after populating closure maps
+            if (field.expr != null && field.expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                BLangSimpleVarRef varRef = (BLangSimpleVarRef) field.expr;
+                if (varRef.symbol.closure) {
+                    visit((BLangSimpleVarRef) field.expr);
+                    field.expr = (BLangExpression) result;
+                    continue;
+                }
+            }
+
             if (!initFuncStmts.containsKey(field.symbol) && field.expr != null) {
                 initFuncStmts.put(field.symbol,
                         createStructFieldUpdate(classDefinition.generatedInitFunction, field,
@@ -6477,6 +6485,10 @@ public class Desugar extends BLangNodeVisitor {
     }
 
     public void visit(BLangTypeInit typeInitExpr) {
+        if (typeInitExpr.initInvocation.flagSet.contains(Flags.OBJECT_CTOR)) {
+            System.out.println("Des This is OCE : " + typeInitExpr); // pass the local mapBlock - closure map as 
+        }
+        System.out.println("DEs This is not OCE : " + typeInitExpr);
         if (typeInitExpr.getBType().tag == TypeTags.STREAM) {
             result = rewriteExpr(desugarStreamTypeInit(typeInitExpr));
         } else {
