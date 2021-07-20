@@ -28,7 +28,6 @@ import io.ballerina.projects.Module;
 import io.ballerina.projects.Package;
 import io.ballerina.projects.Project;
 import io.ballerina.projects.ProjectKind;
-import io.ballerina.projects.directory.ProjectLoader;
 import io.ballerina.tools.diagnostics.Location;
 import io.ballerina.tools.text.LineRange;
 import org.ballerinalang.langserver.LSClientLogger;
@@ -94,12 +93,10 @@ public class BallerinaPackageServiceImpl implements BallerinaPackageService {
             JsonArray jsonPackages = new JsonArray();
             TextDocumentIdentifier[] documentIdentifiers = request.getDocumentIdentifiers();
             try {
-                Arrays.stream(documentIdentifiers).iterator().forEachRemaining(documentIdentifier -> {
-                    CommonUtil.getPathFromURI(documentIdentifier.getUri()).ifPresent(path -> {
-                        Project project = ProjectLoader.loadProject(path);
-                        jsonPackages.add(getPackageComponents(project));
-                    });
-                });
+                Arrays.stream(documentIdentifiers).iterator()
+                        .forEachRemaining(documentIdentifier -> CommonUtil.getPathFromURI(documentIdentifier.getUri())
+                                .flatMap(workspaceManager::project)
+                                .ifPresent(project -> jsonPackages.add(getPackageComponents(project))));
                 response.setProjectPackages(jsonPackages);
             } catch (Throwable e) {
                 String msg = "Operation 'ballerinaPackage/components' failed!";
