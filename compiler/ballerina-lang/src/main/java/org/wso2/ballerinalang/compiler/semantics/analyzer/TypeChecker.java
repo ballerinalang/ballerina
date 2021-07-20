@@ -3222,6 +3222,7 @@ public class TypeChecker extends BLangNodeVisitor {
         if (cIExpr.initInvocation.getBType() == null) {
             cIExpr.initInvocation.setBType(symTable.nilType);
         }
+        cIExpr.initInvocation.addFlag(Flag.OBJECT_CTOR);
         BType actualTypeInitType = getObjectConstructorReturnType(actualType, cIExpr.initInvocation.getBType());
         resultType = types.checkType(cIExpr, actualTypeInitType, expType);
     }
