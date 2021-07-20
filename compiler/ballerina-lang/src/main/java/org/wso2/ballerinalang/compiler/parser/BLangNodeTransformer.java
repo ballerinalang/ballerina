@@ -2996,6 +2996,8 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
         simpleVar.pos = getPosition(requiredParameter);
         if (requiredParameter.paramName().isPresent()) {
             simpleVar.name.pos = getPosition(requiredParameter.paramName().get());
+        } else {
+            simpleVar.name.pos = simpleVar.typeNode.pos;
         }
         simpleVar.flagSet.add(Flag.REQUIRED_PARAM);
         return simpleVar;
@@ -3071,7 +3073,7 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
                 if (child.kind() == SyntaxKind.REST_PARAM) {
                     functionTypeNode.restParam = (BLangSimpleVariable) param;
                 } else {
-                    functionTypeNode.params.add((BLangVariable) param);
+                    functionTypeNode.params.add((BLangSimpleVariable) param);
                 }
             }
 
