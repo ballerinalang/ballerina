@@ -32,13 +32,20 @@ public class VariableContext {
     private final String prefix;
     private final String name;
     private final String type;
+    private final boolean isAssignedWithVar;
+    private final boolean isDefinedObject;
     private final boolean isNew;
     private final boolean isAny;
 
-    private VariableContext(String prefix, String name, String type, boolean isNew, boolean isAny) {
+    private static final String VAR = "var";
+
+    private VariableContext(String prefix, String name, String type, boolean isAssignedWithVar,
+                            boolean isDefinedObject, boolean isNew, boolean isAny) {
         this.prefix = prefix;
         this.name = StringUtils.quoted(name);
         this.type = type;
+        this.isAssignedWithVar = isAssignedWithVar;
+        this.isDefinedObject = isDefinedObject;
         this.isNew = isNew;
         this.isAny = isAny;
     }
@@ -51,7 +58,9 @@ public class VariableContext {
      */
     public static VariableContext newVar(GlobalVariable variableEntry) {
         return new VariableContext(variableEntry.getQualifiersAndMetadata(),
-                variableEntry.getVariableName().getName(), variableEntry.getType(), true,
+                variableEntry.getVariableName().getName(), variableEntry.getType(),
+                variableEntry.isAssignedWithVar(),
+                variableEntry.isDefinedObject(), true,
                 variableEntry.isAssignableToAny());
     }
 
@@ -63,7 +72,9 @@ public class VariableContext {
      */
     public static VariableContext oldVar(GlobalVariable variableEntry) {
         return new VariableContext(variableEntry.getQualifiersAndMetadata(),
-                variableEntry.getVariableName().getName(), variableEntry.getType(), false,
+                variableEntry.getVariableName().getName(), variableEntry.getType(),
+                variableEntry.isAssignedWithVar(),
+                variableEntry.isDefinedObject(), false,
                 variableEntry.isAssignableToAny());
     }
 
@@ -80,7 +91,13 @@ public class VariableContext {
     }
 
     public String type() {
-        return type;
+        return this.type;
+    }
+
+    public String typeLHS() {
+        return this.isAssignedWithVar &&
+                this.isDefinedObject ?
+                VAR : this.type;
     }
 
     public boolean isNew() {
@@ -91,4 +108,3 @@ public class VariableContext {
         return isAny;
     }
 }
-

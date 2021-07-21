@@ -20,8 +20,10 @@ package io.ballerina.shell.invoker.classload;
 
 import io.ballerina.compiler.api.symbols.FunctionSymbol;
 import io.ballerina.compiler.api.symbols.FunctionTypeSymbol;
+import io.ballerina.compiler.api.symbols.TypeDescKind;
 import io.ballerina.compiler.api.symbols.TypeSymbol;
 import io.ballerina.compiler.api.symbols.VariableSymbol;
+import io.ballerina.compiler.syntax.tree.SyntaxKind;
 import io.ballerina.projects.JBallerinaBackend;
 import io.ballerina.projects.JvmTarget;
 import io.ballerina.projects.ModuleId;
@@ -246,8 +248,10 @@ public class ClassLoadInvoker extends ShellSnippetsInvoker {
         Collection<GlobalVariableSymbol> globalVariableSymbols = globalVariableSymbols(project, compilation);
         Map<QuotedIdentifier, GlobalVariable> allNewVariables = new HashMap<>();
         for (VariableDeclarationSnippet snippet : variableDeclarations.keySet()) {
+            boolean isVarAssigned = snippet.getRootNode().typedBindingPattern()
+                    .typeDescriptor().kind().equals(SyntaxKind.VAR_TYPE_DESC);
             Map<QuotedIdentifier, GlobalVariable> newVariables = createGlobalVariables(
-                    snippet.qualifiersAndMetadata(), snippet.names(), globalVariableSymbols);
+                    snippet.qualifiersAndMetadata(), snippet.names(), globalVariableSymbols, isVarAssigned);
             allNewVariables.putAll(newVariables);
         }
         // Persist all data
@@ -452,12 +456,14 @@ public class ClassLoadInvoker extends ShellSnippetsInvoker {
      * @param qualifiersAndMetadata Variable snippet qualifiers.
      * @param definedVariables      Variables that were defined.
      * @param globalVarSymbols      All global variable symbols.
+     * @param isAssignedWithVar     type of the variables.
      * @return Exported found variable information (name and type)
      */
     private Map<QuotedIdentifier, GlobalVariable> createGlobalVariables(
             String qualifiersAndMetadata,
             Set<QuotedIdentifier> definedVariables,
-            Collection<GlobalVariableSymbol> globalVarSymbols) {
+            Collection<GlobalVariableSymbol> globalVarSymbols,
+            boolean isAssignedWithVar) {
         Map<QuotedIdentifier, GlobalVariable> foundVariables = new HashMap<>();
         addDebugDiagnostic("Found variables: " + definedVariables);
 
@@ -480,10 +486,9 @@ public class ClassLoadInvoker extends ShellSnippetsInvoker {
             Set<QuotedIdentifier> requiredImports = new HashSet<>();
             String variableType = importsManager.extractImportsFromType(typeSymbol, requiredImports);
             this.newImports.put(variableName, requiredImports);
-
-            // Create a global variable
-            GlobalVariable globalVariable = new GlobalVariable(variableType, variableName,
-                    isAssignableToAny, qualifiersAndMetadata);
+            boolean isDefinedObject = typeSymbol.typeKind().equals(TypeDescKind.OBJECT);
+            GlobalVariable globalVariable = new GlobalVariable(variableType, isAssignedWithVar,
+                    isDefinedObject, variableName, isAssignableToAny, qualifiersAndMetadata);
             foundVariables.put(variableName, globalVariable);
         }
 
