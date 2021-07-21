@@ -625,7 +625,6 @@ public final class XmlSequence extends XmlValue implements BXmlSequence {
         if (obj == this) {
             return true;
         }
-
         if (obj instanceof XmlSequence) {
             XmlSequence that = (XmlSequence) obj;
             return that.children.equals(this.children);
@@ -633,7 +632,6 @@ public final class XmlSequence extends XmlValue implements BXmlSequence {
         if (obj instanceof XmlItem) {
             return this.children.size() == 1 && this.children.get(0).equals(obj);
         }
-
         if (this.children.isEmpty() && TypeUtils.getType(obj) == PredefinedTypes.TYPE_XML_NEVER) {
             return true;
         }

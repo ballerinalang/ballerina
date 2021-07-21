@@ -1389,6 +1389,29 @@ function testTupleJSONEquality() {
     assert(j != l, true);
 }
 
+class MyObj2 {}
+type MyObject1 object {};
+
+function testEqualityWithNonAnydataType() {
+    map<int|string> a = { one: 1, two: "two" };
+    map<any> b = { one: 1, two: "two" };
+    assert(a == b, true);
+    assert(a != b, false);
+
+    any c = 5;
+    int d = 5;
+    assert(c == d, true);
+    assert(c != d, false);
+
+    MyObject1? obj1 = ();
+    assert(obj1 == (), true);
+    assert(obj1 != (), false);
+
+    MyObj2? obj2 = new;
+    assert(obj2 == (), false);
+    assert(obj2 != (), true);
+}
+
 function assert(anydata actual, anydata expected) {
     if (expected != actual) {
         typedesc<anydata> expT = typeof expected;
@@ -1399,4 +1422,3 @@ function assert(anydata actual, anydata expected) {
         panic e;
     }
 }
-
