@@ -49,6 +49,51 @@ public class ObjectConstructorTest {
     }
 
     @Test
+    public void testObjectCreationViaObjectConstructor() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectCreationViaObjectConstructor");
+    }
+
+    @Test
+    public void testObjectConstructorAnnotationAttachment() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorAnnotationAttachment");
+    }
+
+    @Test
+    public void testObjectConstructorObjectFunctionInvocation() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorObjectFunctionInvocation");
+    }
+
+    @Test
+    public void testObjectConstructorIncludedMethod() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorIncludedMethod");
+    }
+
+    @Test
+    public void testObjectConstructorWithDistintExpectedType() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDistintExpectedType");
+    }
+
+    @Test
+    public void testObjectConstructorWithDistintTypeReference() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDistintTypeReference");
+    }
+
+    @Test
+    public void testObjectConstructorWithDistintTypeReferenceVar() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDistintTypeReferenceVar");
+    }
+
+    @Test
+    public void testObjectConstructorWithDefiniteTypeAndWithoutReference() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorWithDefiniteTypeAndWithoutReference");
+    }
+
+    @Test
+    public void testObjectConstructorExprWithReadOnlyCET() {
+        BRunUtil.invoke(compiledConstructedObjects, "testObjectConstructorExprWithReadOnlyCET");
+    }
+
+    @Test
     public void testObjectConstructorNegative() {
 
         CompileResult negativeResult = BCompileUtil.compile(
