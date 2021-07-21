@@ -31,6 +31,7 @@ import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BTypedesc;
 import io.ballerina.runtime.internal.types.BArrayType;
 import io.ballerina.runtime.internal.types.BErrorType;
+import io.ballerina.runtime.internal.types.BIntersectionType;
 import io.ballerina.runtime.internal.types.BObjectType;
 import io.ballerina.runtime.internal.types.BTypeIdSet;
 
@@ -58,6 +59,25 @@ public class TypeIds {
 
     public static Object typeIds(BTypedesc t, boolean primaryOnly) {
         Type describingType = t.getDescribingType();
+        BTypeIdSet typeIdSet = getTypeIdSetForType(describingType);
+
+        ArrayList<Object> objects = new ArrayList<>();
+        if (typeIdSet != null) {
+            for (TypeId id : typeIdSet.getIds()) {
+                if (primaryOnly && !id.isPrimary()) {
+                    continue;
+                }
+                Object moduleId = createModuleId(id.getPkg());
+                objects.add(createTypeId(moduleId, id.getName()));
+            }
+        }
+
+        BArray arrayValue = ValueCreator.createArrayValue(objects.toArray(new Object[]{}), typeIdArrayType);
+        arrayValue.freezeDirect();
+        return arrayValue;
+    }
+
+    private static BTypeIdSet getTypeIdSetForType(Type describingType) {
         BTypeIdSet typeIdSet;
         switch (describingType.getTag()) {
             case TypeTags.ERROR_TAG:
@@ -68,22 +88,13 @@ public class TypeIds {
                 BObjectType objectType = (BObjectType) describingType;
                 typeIdSet = objectType.typeIdSet;
                 break;
+            case TypeTags.INTERSECTION_TAG:
+                BIntersectionType intersectionType = (BIntersectionType) describingType;
+                return getTypeIdSetForType(intersectionType.getEffectiveType());
             default:
                 typeIdSet = new BTypeIdSet();
         }
-
-        ArrayList<Object> objects = new ArrayList<>();
-        for (TypeId id : typeIdSet.getIds()) {
-            if (primaryOnly && !id.isPrimary()) {
-                continue;
-            }
-            Object moduleId = createModuleId(id.getPkg());
-            objects.add(createTypeId(moduleId, id.getName()));
-        }
-
-        BArray arrayValue = ValueCreator.createArrayValue(objects.toArray(new Object[]{}), typeIdArrayType);
-        arrayValue.freezeDirect();
-        return arrayValue;
+        return typeIdSet;
     }
 
     private static BMap<BString, Object> createModuleId(Module mod) {
@@ -99,8 +110,29 @@ public class TypeIds {
     private static BMap<BString, Object> createTypeId(Object moduleId, String name) {
         HashMap<String, Object> map = new HashMap<>();
         map.put("moduleId", moduleId);
-        map.put("localId", StringUtils.fromString(name));
+        map.put("localId", processLocalId(name));
 
         return ValueCreator.createReadonlyRecordValue(BALLERINA_TYPEDESC_PKG_ID, TYPE_ID_TYPE_SIG, map);
+    }
+
+    // Compiler generate integer values for local-id when it's anonymous
+    private static Object processLocalId(String localId) {
+        boolean isNumber = true;
+        for (char c : localId.toCharArray()) {
+            if (c < '0' || c > '9') {
+                isNumber = false;
+                break;
+            }
+        }
+
+        if (isNumber) {
+            try {
+                return Long.parseLong(localId);
+            } catch (NumberFormatException e) {
+                // Ignore, the local-id must be user provided identifier.
+            }
+        }
+
+        return StringUtils.fromString(localId);
     }
 }
