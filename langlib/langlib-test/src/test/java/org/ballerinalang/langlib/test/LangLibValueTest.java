@@ -326,6 +326,8 @@ public class LangLibValueTest {
                 { "testCloneWithTypeToArrayOfRecord" },
                 { "testCloneWithTypeToArrayOfMap" },
                 { "testCloneWithTypeIntArrayToUnionArray" },
+                { "testCloneWithTypeArrayToTuple" },
+                { "testCloneWithTypeTuple" },
                 { "testCloneWithTypeIntSubTypeArray" },
                 { "testCloneWithTypeStringArray" },
                 { "testCloneWithTypeWithInferredArgument" },
