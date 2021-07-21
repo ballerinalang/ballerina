@@ -6485,10 +6485,6 @@ public class Desugar extends BLangNodeVisitor {
     }
 
     public void visit(BLangTypeInit typeInitExpr) {
-        BLangType type = typeInitExpr.getType();
-        if (type != null && type.flagSet.contains(Flag.OBJECT_CTOR)) {
-            System.out.println("Des This is OCE : " + typeInitExpr); // pass the local mapBlock - closure map as
-        }
         if (typeInitExpr.getBType().tag == TypeTags.STREAM) {
             result = rewriteExpr(desugarStreamTypeInit(typeInitExpr));
         } else {

@@ -256,8 +256,6 @@ public class ClosureDesugar extends BLangNodeVisitor {
     }
 
     private void updateClassClosureMap(BLangClassDefinition classDef) {
-        System.out.println("Original class fields : " + classDef.fields);
-
         OCEDynamicEnvironmentData oceData = classDef.oceData;
         var env = oceData.capturedClosureEnv;
         var enclMapSymbols = collectClosureMapSymbols(env, env.enclInvokable, false);
@@ -279,11 +277,8 @@ public class ClosureDesugar extends BLangNodeVisitor {
         mapVar.expr = refToBlockClosureMap;
 
         // Add the map variable to the top of the statements in the block node.
-        System.out.println("283 ----" + mapVar);
         mapVar = desugar.rewrite(mapVar, oceData.capturedClosureEnv);
-        System.out.println("283 ----" + mapVar);
         classDef.fields.add(0, mapVar);
-        System.out.println("Updated class fields : " + classDef.fields);
 
 //        BVarSymbol mapSymbol = createMapSymbolIfAbsent(env.enclInvokable, blockClosureMapCount);
 
@@ -301,7 +296,6 @@ public class ClosureDesugar extends BLangNodeVisitor {
 
         BLangLiteral stringLit = new BLangLiteral(oceData.mapSymbol.name.value, symTable.stringType);
         stringLit.pos = classDef.pos;
-        System.out.println("stringLit : " + stringLit);
 
 //        var targetVarRef = new BLangIndexBasedAccess.BLangStructFieldAccessExpr(classDef.pos,
 //                fieldAccessExpr.expr, stringLit,
