@@ -773,6 +773,17 @@ public class Desugar extends BLangNodeVisitor {
             }
         }
 
+        List<String> elements = new ArrayList<String>();
+        for (int i = 0; i < pkgNode.constants.size(); i++) {
+            String next = pkgNode.constants.get(i).symbol.name.value;
+            if (elements.contains(next)) {
+                pkgNode.constants.remove(i);
+                i -= 1;
+            } else {
+                elements.add(next);
+            }
+        }
+
         pkgNode.globalVars = desugarGlobalVariables(pkgNode, initFnBody);
 
         pkgNode.services.forEach(service -> serviceDesugar.engageCustomServiceDesugar(service, env));
