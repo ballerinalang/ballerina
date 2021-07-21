@@ -976,6 +976,8 @@ public class Desugar extends BLangNodeVisitor {
     private void desugarClassDefinitions(List<TopLevelNode> topLevelNodes) {
         for (int i = 0, topLevelNodesSize = topLevelNodes.size(); i < topLevelNodesSize; i++) {
             TopLevelNode topLevelNode = topLevelNodes.get(i);
+//            if (topLevelNode.getKind() == NodeKind.CLASS_DEFN &&
+//                            !((BLangClassDefinition) topLevelNode).isObjectContructorDecl) {
             if (topLevelNode.getKind() == NodeKind.CLASS_DEFN) {
                 ((BLangClassDefinition) topLevelNode).accept(this);
             }
@@ -1017,7 +1019,10 @@ public class Desugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangObjectConstructorExpression objectConstructorExpression) {
-        result = rewriteExpr(objectConstructorExpression.typeInit);
+//        objectConstructorExpression.classNode = rewrite(objectConstructorExpression.classNode, env);
+//        result = rewriteExpr(objectConstructorExpression.typeInit);
+//        this.semanticAnalyzer.analyzeNode(objectConstructorExpression.typeInit, env);
+//        result = rewriteExpr(objectConstructorExpression.typeInit);
     }
 
     @Override
@@ -1033,10 +1038,21 @@ public class Desugar extends BLangNodeVisitor {
             bLangSimpleVariable.typeNode = rewrite(bLangSimpleVariable.typeNode, env);
         }
 
-        // Add object level variables to the init function.
+        // Add object level variables default values to the init function.
         Map<BSymbol, BLangStatement> initFuncStmts = classDefinition.generatedInitFunction.initFunctionStmts;
         for (BLangSimpleVariable field : classDefinition.fields) {
             // skip if the field is already have an value set by the constructor.
+            // we are creating an assignment to closures here need change them to self refs should we rewrite this
+            // or skip and create after populating closure maps
+            if (field.expr != null && field.expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                BLangSimpleVarRef varRef = (BLangSimpleVarRef) field.expr;
+                if (varRef.symbol.closure) {
+                    visit((BLangSimpleVarRef) field.expr);
+                    field.expr = (BLangExpression) result;
+                    continue;
+                }
+            }
+
             if (!initFuncStmts.containsKey(field.symbol) && field.expr != null) {
                 initFuncStmts.put(field.symbol,
                         createStructFieldUpdate(classDefinition.generatedInitFunction, field,
@@ -1054,6 +1070,7 @@ public class Desugar extends BLangNodeVisitor {
         }
 
         if (classDefinition.initFunction != null) {
+            // user has written a init method. We
             ((BLangReturn) generatedInitFnBody.stmts.get(i)).expr =
                     createUserDefinedInitInvocation(classDefinition.pos,
                             (BObjectTypeSymbol) classDefinition.symbol, classDefinition.generatedInitFunction);
@@ -1074,7 +1091,7 @@ public class Desugar extends BLangNodeVisitor {
     private BLangInvocation createUserDefinedInitInvocation(Location location,
                                                             BObjectTypeSymbol objectTypeSymbol,
                                                             BLangFunction generatedInitFunction) {
-        ArrayList<BLangExpression> paramRefs = new ArrayList<>();
+        ArrayList<BLangExpression> paramRefs = new ArrayList<>(generatedInitFunction.requiredParams.size());
         for (BLangSimpleVariable var : generatedInitFunction.requiredParams) {
             paramRefs.add(ASTBuilderUtil.createVariableRef(location, var.symbol));
         }
@@ -1360,9 +1377,10 @@ public class Desugar extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangSimpleVariable varNode) {
-        if (((varNode.symbol.owner.tag & SymTag.INVOKABLE) != SymTag.INVOKABLE)
-                && (varNode.symbol.owner.tag & SymTag.LET) != SymTag.LET
-                && (varNode.symbol.owner.tag & SymTag.PACKAGE) != SymTag.PACKAGE) {
+        int ownerTag = varNode.symbol.owner.tag;
+        if (((ownerTag & SymTag.INVOKABLE) != SymTag.INVOKABLE)
+                && (ownerTag & SymTag.LET) != SymTag.LET
+                && (ownerTag & SymTag.PACKAGE) != SymTag.PACKAGE) {
             varNode.expr = null;
             result = varNode;
             return;
@@ -6357,11 +6375,11 @@ public class Desugar extends BLangNodeVisitor {
         // Reorder the arguments to match the original function signature.
         reorderArguments(invocation);
 
-        invocation.requiredArgs = rewriteExprs(invocation.requiredArgs);
+        rewriteExprs(invocation.requiredArgs);
         fixStreamTypeCastsInInvocationParams(invocation);
         fixNonRestArgTypeCastInTypeParamInvocation(invocation);
 
-        invocation.restArgs = rewriteExprs(invocation.restArgs);
+        rewriteExprs(invocation.restArgs);
 
         annotationDesugar.defineStatementAnnotations(invocation.annAttachments, invocation.pos,
                                                      invocation.symbol.pkgID, invocation.symbol.owner, env);
@@ -9170,7 +9188,7 @@ public class Desugar extends BLangNodeVisitor {
 
     private BLangAssignment createStructFieldUpdate(BLangFunction function, BLangSimpleVariable variable,
                                                     BVarSymbol selfSymbol) {
-        return createStructFieldUpdate(function, variable.expr, variable.symbol, variable.getBType(), selfSymbol,
+         return createStructFieldUpdate(function, variable.expr, variable.symbol, variable.getBType(), selfSymbol,
                                        variable.name);
     }
 

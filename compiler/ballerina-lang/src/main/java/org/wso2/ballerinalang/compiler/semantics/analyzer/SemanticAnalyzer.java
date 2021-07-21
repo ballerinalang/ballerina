@@ -312,16 +312,20 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
         for (int i = 0; i < pkgNode.topLevelNodes.size(); i++) {
             TopLevelNode pkgLevelNode = pkgNode.topLevelNodes.get(i);
             NodeKind kind = pkgLevelNode.getKind();
-            if (kind == NodeKind.CONSTANT ||
-                    ((kind == NodeKind.FUNCTION && ((BLangFunction) pkgLevelNode).flagSet.contains(Flag.LAMBDA)))) {
+            if (kind == NodeKind.CONSTANT) {
                 continue;
             }
 
-            if (pkgLevelNode.getKind() == NodeKind.CLASS_DEFN &&
-                    ((BLangClassDefinition) pkgLevelNode).flagSet.contains(Flag.ANONYMOUS)) {
+            if (kind == NodeKind.FUNCTION) {
+                BLangFunction blangFunction = (BLangFunction) pkgLevelNode;
+                if (blangFunction.flagSet.contains(Flag.LAMBDA) || blangFunction.flagSet.contains(Flag.ATTACHED)) {
+                    continue;
+                }
+            }
+
+            if (kind == NodeKind.CLASS_DEFN && ((BLangClassDefinition) pkgLevelNode).isObjectContructorDecl) {
                 // This is a class defined for an object-constructor-expression (OCE). This will be analyzed when
-                // visiting the OCE in the type checker.
-                // This is a temporary workaround until we fix
+                // visiting the OCE in the type checker. This is a temporary workaround until we fix
                 // https://github.com/ballerina-platform/ballerina-lang/issues/27009
                 continue;
             }
@@ -548,7 +552,7 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangObjectConstructorExpression objectConstructorExpression) {
-        visit(objectConstructorExpression.typeInit);
+//        visit(objectConstructorExpression.typeInit);
     }
 
     private void analyzeClassDefinition(BLangClassDefinition classDefinition) {
