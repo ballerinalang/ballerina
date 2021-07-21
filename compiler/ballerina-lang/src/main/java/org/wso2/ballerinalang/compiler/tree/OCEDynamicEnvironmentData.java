@@ -18,6 +18,7 @@ public class OCEDynamicEnvironmentData {
     public boolean closureDesugared = false;
 
      public OCEDynamicEnvironmentData(SymbolEnv env, BLangTypeInit typeInit) {
-
+         this.capturedClosureEnv = env;
+         this.typeInit = typeInit;
      }
 }
