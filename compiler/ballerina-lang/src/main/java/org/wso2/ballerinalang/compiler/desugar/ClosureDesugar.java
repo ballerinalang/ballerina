@@ -52,6 +52,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangSimpleVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangTupleVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
+import org.wso2.ballerinalang.compiler.tree.OCEDynamicEnvironmentData;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAccessExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangArrowFunction;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangBinaryExpr;
@@ -148,6 +149,7 @@ import org.wso2.ballerinalang.compiler.tree.statements.BLangWorkerSend;
 import org.wso2.ballerinalang.compiler.tree.statements.BLangXMLNSStatement;
 import org.wso2.ballerinalang.compiler.tree.types.BLangObjectTypeNode;
 import org.wso2.ballerinalang.compiler.tree.types.BLangRecordTypeNode;
+import org.wso2.ballerinalang.compiler.tree.types.BLangType;
 import org.wso2.ballerinalang.compiler.util.CompilerContext;
 import org.wso2.ballerinalang.compiler.util.Name;
 import org.wso2.ballerinalang.compiler.util.Names;
@@ -256,17 +258,19 @@ public class ClosureDesugar extends BLangNodeVisitor {
     private void updateClassClosureMap(BLangClassDefinition classDef) {
         System.out.println("Original class fields : " + classDef.fields);
 
-        // create class map
-        classDef.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + blockClosureMapCount, classDef.capturedClosureEnv);
+        // create class map each class has only one map, count is added here just to identify which block map
+        // populates data to class map
+        classDef.oceData.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + blockClosureMapCount,
+                classDef.oceData.capturedClosureEnv);
         BLangRecordLiteral emptyRecord = ASTBuilderUtil.createEmptyRecordLiteral(classDef.pos, symTable.mapType);
-        BLangSimpleVariable mapVar = ASTBuilderUtil.createVariable(classDef.pos, classDef.mapSymbol.name.value,
-                classDef.mapSymbol.type, emptyRecord,
-                classDef.mapSymbol);
-        mapVar.typeNode = ASTBuilderUtil.createTypeNode(classDef.mapSymbol.type);
+        BLangSimpleVariable mapVar = ASTBuilderUtil.createVariable(classDef.pos, classDef.oceData.mapSymbol.name.value,
+                classDef.oceData.mapSymbol.type, emptyRecord,
+                classDef.oceData.mapSymbol);
+        mapVar.typeNode = ASTBuilderUtil.createTypeNode(classDef.oceData.mapSymbol.type);
         BLangSimpleVariableDef mapVarDef = ASTBuilderUtil.createVariableDef(classDef.pos, mapVar);
 
         // Add the map variable to the top of the statements in the block node.
-        mapVar = desugar.rewrite(mapVar, classDef.capturedClosureEnv);
+        mapVar = desugar.rewrite(mapVar, classDef.oceData.capturedClosureEnv);
         classDef.fields.add(0, mapVar);
         System.out.println("Updated class fields : " + classDef.fields);
 
@@ -280,7 +284,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
 //            }
 //        }
 
-        rewrite(classDef, classDef.capturedClosureEnv);
+        rewrite(classDef, classDef.oceData.capturedClosureEnv);
     }
 
     @Override
@@ -537,11 +541,11 @@ public class ClosureDesugar extends BLangNodeVisitor {
     }
 
     private BVarSymbol createMapSymbolIfAbsent(BLangClassDefinition classDef, int closureMapCount) {
-        if (classDef.mapSymbol == null) {
-            classDef.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + closureMapCount,
-                    classDef.capturedClosureEnv);
+        if (classDef.oceData.mapSymbol == null) {
+            classDef.oceData.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + closureMapCount,
+                    classDef.oceData.capturedClosureEnv);
         }
-        return classDef.mapSymbol;
+        return classDef.oceData.mapSymbol;
     }
 
     private static BVarSymbol getMapSymbol(BLangNode node) {
@@ -554,7 +558,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
             case RESOURCE_FUNC:
                 return ((BLangFunction) node).mapSymbol;
             case CLASS_DEFN:
-                return ((BLangClassDefinition) node).mapSymbol;
+                return ((BLangClassDefinition) node).oceData.mapSymbol;
             default:
                 return CLOSURE_MAP_NOT_FOUND;
         }
@@ -599,19 +603,20 @@ public class ClosureDesugar extends BLangNodeVisitor {
             result = classDefinition;
             return;
         }
-        BLangFunction enclInvokable = (BLangFunction) classDefinition.capturedClosureEnv.enclInvokable;
+        OCEDynamicEnvironmentData oceData = classDefinition.oceData;
+        BLangFunction enclInvokable = (BLangFunction) oceData.capturedClosureEnv.enclInvokable;
 //        BVarSymbol mapSymbol = createMapSymbolIfAbsent(classDefinition, blockClosureMapCount);
-        BVarSymbol mapSymbol = classDefinition.mapSymbol;
+        BVarSymbol mapSymbol = oceData.mapSymbol;
         if (mapSymbol == null) {
             desugar.visit(classDefinition);
             result = classDefinition;
             return;
         }
-        var env = classDefinition.capturedClosureEnv;
+        var env = oceData.capturedClosureEnv;
 
         //SymbolEnv symbolEnv = env.createClone();
 
-        classDefinition.enclMapSymbols = collectClosureMapSymbols(classDefinition.capturedClosureEnv, enclInvokable, false);
+        oceData.enclMapSymbols = collectClosureMapSymbols(oceData.capturedClosureEnv, enclInvokable, false);
         // create class level map of closures
         // update init method
 
@@ -971,11 +976,13 @@ public class ClosureDesugar extends BLangNodeVisitor {
     }
 
     public void visit(BLangTypeInit typeInitExpr) {
-        var userDefinedType = typeInitExpr.userDefinedType;
-        if (userDefinedType != null && userDefinedType.flagSet.contains(Flags.OBJECT_CTOR)) {
+        BLangType type = typeInitExpr.getType();
+        if (type != null && type.flagSet.contains(Flag.OBJECT_CTOR)) {
+            BLangFunction enclosedFunction = (BLangFunction) env.enclInvokable;
             System.out.println("This is OCE : " + typeInitExpr); // pass the local mapBlock - closure map as argument
+        } else {
+            System.out.println("This is not OCE : " + typeInitExpr);
         }
-        System.out.println("This is not OCE : " + typeInitExpr);
         typeInitExpr.initInvocation = rewriteExpr(typeInitExpr.initInvocation);
         result = typeInitExpr;
     }

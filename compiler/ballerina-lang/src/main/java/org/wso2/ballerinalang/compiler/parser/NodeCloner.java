@@ -2308,7 +2308,7 @@ public class NodeCloner extends BLangNodeVisitor {
 
         clone.pos = source.pos;
         clone.classNode = clone(source.classNode);
-        clone.typeInit = clone(source.typeInit);
+        //clone.typeInit = clone(source.typeInit);
         clone.referenceType = clone(source.referenceType);
         clone.isClient = source.isClient;
 

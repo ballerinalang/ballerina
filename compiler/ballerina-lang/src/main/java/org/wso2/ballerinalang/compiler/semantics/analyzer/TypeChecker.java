@@ -93,6 +93,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
 import org.wso2.ballerinalang.compiler.tree.BLangSimpleVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangTableKeySpecifier;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
+import org.wso2.ballerinalang.compiler.tree.OCEDynamicEnvironmentData;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangInputClause;
@@ -3197,7 +3198,7 @@ public class TypeChecker extends BLangNodeVisitor {
         BObjectType actualObjectType = (BObjectType) actualType;
         List<BLangType> typeRefs = classNode.typeRefs;
         SymbolEnv typeDefEnv = SymbolEnv.createObjectConstructorObjectEnv(classNode, classNode.symbol.scope, env);
-        classNode.capturedClosureEnv = typeDefEnv;
+        classNode.oceData = new OCEDynamicEnvironmentData(typeDefEnv, objectCtorExpression.typeInit);
         if (Symbols.isFlagOn(expType.flags, Flags.READONLY)) {
             handleObjectConstrExprForReadOnly(objectCtorExpression, actualObjectType, typeDefEnv, false);
         } else if (!typeRefs.isEmpty() && Symbols.isFlagOn(typeRefs.get(0).getBType().flags,

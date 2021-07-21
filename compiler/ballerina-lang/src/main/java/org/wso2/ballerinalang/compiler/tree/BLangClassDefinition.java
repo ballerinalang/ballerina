@@ -58,10 +58,9 @@ public class BLangClassDefinition extends BLangNode implements ClassDefinition {
     public List<BLangSimpleVariable> referencedFields;
     public int precedence;
     public boolean isServiceDecl;
-    public boolean isObjectContructorDecl;
-    public SymbolEnv capturedClosureEnv;
-    public TreeMap<Integer, BVarSymbol> enclMapSymbols;
-    public BVarSymbol mapSymbol;
+
+    public OCEDynamicEnvironmentData oceData = null;
+    public boolean isObjectContructorDecl = false;
 
     public BLangClassDefinition() {
         this.functions = new ArrayList<>();
