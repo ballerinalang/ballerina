@@ -205,8 +205,12 @@ public class Utils {
             try {
                 try (InputStream inputStream = body.get().byteStream();
                      FileOutputStream outputStream = new FileOutputStream(balaPath.toString())) {
-                    writeAndHandleProgress(inputStream, outputStream, resContentLength / 1024, fullPkgName,
-                            outStream, logFormatter);
+                    if (outStream == null) {
+                        writeAndHandleProgressWithoutLogging(inputStream, outputStream);
+                    } else {
+                        writeAndHandleProgress(inputStream, outputStream, resContentLength / 1024, fullPkgName,
+                                outStream, logFormatter);
+                    }
                 } catch (IOException e) {
                     throw new CentralClientException(
                             logFormatter.formatLog("error occurred copying the bala file: " + e.getMessage()));
@@ -272,6 +276,17 @@ public class Utils {
         } finally {
             outStream.println(logFormatter.formatLog(fullPkgName + " pulled from central successfully"));
         }
+    }
+
+    private static void writeAndHandleProgressWithoutLogging(InputStream inputStream, FileOutputStream outputStream)
+            throws IOException {
+        int count;
+        byte[] buffer = new byte[1024];
+
+        while ((count = inputStream.read(buffer)) > 0) {
+            outputStream.write(buffer, 0, count);
+        }
+
     }
 
     /**
