@@ -258,22 +258,55 @@ public class ClosureDesugar extends BLangNodeVisitor {
     private void updateClassClosureMap(BLangClassDefinition classDef) {
         System.out.println("Original class fields : " + classDef.fields);
 
+        OCEDynamicEnvironmentData oceData = classDef.oceData;
+        var env = oceData.capturedClosureEnv;
+        var enclMapSymbols = collectClosureMapSymbols(env, env.enclInvokable, false);
+        if (enclMapSymbols.isEmpty()) {
+            return;
+        }
+
+        BLangSimpleVarRef refToBlockClosureMap = ASTBuilderUtil.createVariableRef(classDef.pos,
+                enclMapSymbols.pollLastEntry().getValue());
+
         // create class map each class has only one map, count is added here just to identify which block map
         // populates data to class map
-        classDef.oceData.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + blockClosureMapCount,
-                classDef.oceData.capturedClosureEnv);
+        oceData.mapSymbol = createMapSymbol(OBJECT_CTOR_MAP_SYM_NAME + blockClosureMapCount,
+                oceData.capturedClosureEnv);
         BLangRecordLiteral emptyRecord = ASTBuilderUtil.createEmptyRecordLiteral(classDef.pos, symTable.mapType);
-        BLangSimpleVariable mapVar = ASTBuilderUtil.createVariable(classDef.pos, classDef.oceData.mapSymbol.name.value,
-                classDef.oceData.mapSymbol.type, emptyRecord,
-                classDef.oceData.mapSymbol);
-        mapVar.typeNode = ASTBuilderUtil.createTypeNode(classDef.oceData.mapSymbol.type);
-        BLangSimpleVariableDef mapVarDef = ASTBuilderUtil.createVariableDef(classDef.pos, mapVar);
+        BLangSimpleVariable mapVar = ASTBuilderUtil.createVariable(classDef.pos, oceData.mapSymbol.name.value,
+                oceData.mapSymbol.type, emptyRecord, oceData.mapSymbol);
+        mapVar.typeNode = ASTBuilderUtil.createTypeNode(oceData.mapSymbol.type);
+        mapVar.expr = refToBlockClosureMap;
 
         // Add the map variable to the top of the statements in the block node.
-        mapVar = desugar.rewrite(mapVar, classDef.oceData.capturedClosureEnv);
+        System.out.println("283 ----" + mapVar);
+        mapVar = desugar.rewrite(mapVar, oceData.capturedClosureEnv);
+        System.out.println("283 ----" + mapVar);
         classDef.fields.add(0, mapVar);
         System.out.println("Updated class fields : " + classDef.fields);
 
+//        BVarSymbol mapSymbol = createMapSymbolIfAbsent(env.enclInvokable, blockClosureMapCount);
+
+        BLangTypeInit typeInit = oceData.typeInit;
+        BLangInvocation function = typeInit.initInvocation;
+        if (typeInit.argsExpr == null) {
+            typeInit.argsExpr = new ArrayList<>();
+        }
+        typeInit.argsExpr.add(refToBlockClosureMap);
+        function.requiredArgs.add(refToBlockClosureMap);
+        function.argExprs.add(refToBlockClosureMap);
+
+
+        visit(typeInit);
+
+        BLangLiteral stringLit = new BLangLiteral(oceData.mapSymbol.name.value, symTable.stringType);
+        stringLit.pos = classDef.pos;
+        System.out.println("stringLit : " + stringLit);
+
+//        var targetVarRef = new BLangIndexBasedAccess.BLangStructFieldAccessExpr(classDef.pos,
+//                fieldAccessExpr.expr, stringLit,
+//                (BVarSymbol) fieldAccessExpr.symbol, false,
+//                isStoreOnCreation);
 //        for (BLangSimpleVariable field : classDef.fields) {
 //            if (field.expr != null && field.expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
 //                BLangSimpleVarRef varRef = (BLangSimpleVarRef) field.expr;
@@ -284,7 +317,7 @@ public class ClosureDesugar extends BLangNodeVisitor {
 //            }
 //        }
 
-        rewrite(classDef, classDef.oceData.capturedClosureEnv);
+        rewrite(classDef, oceData.capturedClosureEnv);
     }
 
     @Override
@@ -976,13 +1009,6 @@ public class ClosureDesugar extends BLangNodeVisitor {
     }
 
     public void visit(BLangTypeInit typeInitExpr) {
-        BLangType type = typeInitExpr.getType();
-        if (type != null && type.flagSet.contains(Flag.OBJECT_CTOR)) {
-            BLangFunction enclosedFunction = (BLangFunction) env.enclInvokable;
-            System.out.println("This is OCE : " + typeInitExpr); // pass the local mapBlock - closure map as argument
-        } else {
-            System.out.println("This is not OCE : " + typeInitExpr);
-        }
         typeInitExpr.initInvocation = rewriteExpr(typeInitExpr.initInvocation);
         result = typeInitExpr;
     }
