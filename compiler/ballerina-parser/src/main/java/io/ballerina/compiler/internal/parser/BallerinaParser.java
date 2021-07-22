@@ -65,6 +65,7 @@ import io.ballerina.compiler.internal.parser.tree.STTypeTestExpressionNode;
 import io.ballerina.compiler.internal.parser.tree.STTypedBindingPatternNode;
 import io.ballerina.compiler.internal.parser.tree.STUnaryExpressionNode;
 import io.ballerina.compiler.internal.parser.tree.STUnionTypeDescriptorNode;
+import io.ballerina.compiler.internal.parser.tree.STXMLStepExpressionNode;
 import io.ballerina.compiler.internal.parser.utils.ConditionalExprResolver;
 import io.ballerina.compiler.internal.syntax.SyntaxUtils;
 import io.ballerina.compiler.syntax.tree.SyntaxKind;
@@ -121,14 +122,11 @@ public class BallerinaParser extends AbstractParser {
                 return parseTopLevelNode();
             case STATEMENT:
                 startContext(ParserRuleContext.COMP_UNIT);
-                // startContext(ParserRuleContext.FUNC_DEF_OR_FUNC_TYPE);
                 startContext(ParserRuleContext.FUNC_BODY_BLOCK);
                 return parseStatement();
             case EXPRESSION:
                 startContext(ParserRuleContext.COMP_UNIT);
-                // startContext(ParserRuleContext.FUNC_DEF_OR_FUNC_TYPE);
-                startContext(ParserRuleContext.FUNC_BODY_BLOCK);
-                startContext(ParserRuleContext.STATEMENT);
+                startContext(ParserRuleContext.VAR_DECL_STMT);
                 return parseExpression();
             default:
                 throw new UnsupportedOperationException("Cannot start parsing from: " + context);
@@ -2985,6 +2983,7 @@ public class BallerinaParser extends AbstractParser {
             case IF_KEYWORD:
             case WHILE_KEYWORD:
             case DO_KEYWORD:
+            case RIGHT_DOUBLE_ARROW_TOKEN:
                 return true;
             default:
                 return isEndOfModuleLevelNode(1);
@@ -5319,7 +5318,7 @@ public class BallerinaParser extends AbstractParser {
                 // Handle 'a/<b|c>...' scenarios. These have ambiguity between being a xml-step expr
                 // or a binary expr (division), with a type-cast as the denominator.
                 if (nextTokenKind == SyntaxKind.SLASH_TOKEN && peek(2).kind == SyntaxKind.LT_TOKEN) {
-                    SyntaxKind expectedNodeType = getExpectedNodeKind(3, isRhsExpr, isInMatchGuard, lhsExpr.kind);
+                    SyntaxKind expectedNodeType = getExpectedNodeKind(3);
                     if (expectedNodeType == SyntaxKind.XML_STEP_EXPRESSION) {
                         newLhsExpr = createXMLStepExpression(lhsExpr);
                         break;
@@ -5360,6 +5359,14 @@ public class BallerinaParser extends AbstractParser {
         STToken token = peek();
         SyntaxKind lhsExprKind = lhsExpr.kind;
         Solution solution;
+        // This is to prevent recovering xmlStepStart infinitely.
+        if (lhsExprKind == SyntaxKind.XML_STEP_EXPRESSION &&
+                ((STXMLStepExpressionNode) lhsExpr).xmlStepStart.isMissing()) {
+            insertToken(SyntaxKind.SEMICOLON_TOKEN, ParserRuleContext.SEMICOLON);
+            return parseExpressionRhsInternal(currentPrecedenceLevel, lhsExpr, isRhsExpr, allowActions, isInMatchGuard,
+                    isInConditionalExpr);
+        }
+
         if (lhsExprKind == SyntaxKind.QUALIFIED_NAME_REFERENCE || lhsExprKind == SyntaxKind.SIMPLE_NAME_REFERENCE) {
             solution = recover(token, ParserRuleContext.VARIABLE_REF_RHS);
         } else {
@@ -5411,8 +5418,7 @@ public class BallerinaParser extends AbstractParser {
         return newLhsExpr;
     }
 
-    private SyntaxKind getExpectedNodeKind(int lookahead, boolean isRhsExpr, boolean isInMatchGuard,
-                                           SyntaxKind precedingNodeKind) {
+    private SyntaxKind getExpectedNodeKind(int lookahead) {
         STToken nextToken = peek(lookahead);
         switch (nextToken.kind) {
             case ASTERISK_TOKEN:
@@ -5420,14 +5426,14 @@ public class BallerinaParser extends AbstractParser {
             case GT_TOKEN:
                 break;
             case PIPE_TOKEN:
-                return getExpectedNodeKind(++lookahead, isRhsExpr, isInMatchGuard, precedingNodeKind);
+                return getExpectedNodeKind(++lookahead);
             case IDENTIFIER_TOKEN:
                 nextToken = peek(++lookahead);
                 switch (nextToken.kind) {
                     case GT_TOKEN: // a>
                         break;
                     case PIPE_TOKEN: // a|
-                        return getExpectedNodeKind(++lookahead, isRhsExpr, isInMatchGuard, precedingNodeKind);
+                        return getExpectedNodeKind(++lookahead);
                     case COLON_TOKEN:
                         nextToken = peek(++lookahead);
                         switch (nextToken.kind) {
@@ -5439,8 +5445,7 @@ public class BallerinaParser extends AbstractParser {
 
                                 // a:b |
                                 if (nextToken.kind == SyntaxKind.PIPE_TOKEN) {
-                                    return getExpectedNodeKind(++lookahead, isRhsExpr, isInMatchGuard,
-                                            precedingNodeKind);
+                                    return getExpectedNodeKind(++lookahead);
                                 }
 
                                 // a:b> or everything else
@@ -6372,6 +6377,14 @@ public class BallerinaParser extends AbstractParser {
                 if (isObjectFieldStart() || nextToken.isMissing()) {
                     return parseObjectField(metadata, STNodeFactory.createEmptyNode(), qualifiers, isObjectTypeDesc);
                 }
+
+                if (isObjectMethodStart(getNextNextToken())) {
+                    // Invalidate identifier before object method or object field start. This is a special case when
+                    // typing a qualifier before an object method or object field start start. ErrorHandler is not able
+                    // to correctly remove the identifier with the `LOOKAHEAD_LIMIT = 4`. Hence, special case this.
+                    addInvalidTokenToNextToken(errorHandler.consumeInvalidToken());
+                    return parseObjectMemberWithoutMeta(metadata, qualifiers, recoveryCtx, isObjectTypeDesc);
+                }
                 // Else fall through
             default:
                 if (isTypeStartingToken(nextToken.kind) && nextToken.kind != SyntaxKind.IDENTIFIER_TOKEN) {
@@ -6404,6 +6417,19 @@ public class BallerinaParser extends AbstractParser {
                 return true;
             default:
                 return isModuleVarDeclStart(1);
+        }
+    }
+
+    private boolean isObjectMethodStart(STToken token) {
+        switch (token.kind) {
+            case FUNCTION_KEYWORD:
+            case REMOTE_KEYWORD:
+            case RESOURCE_KEYWORD:
+            case ISOLATED_KEYWORD:
+            case TRANSACTIONAL_KEYWORD:
+                return true;
+            default:
+                return false;
         }
     }
     
@@ -13071,7 +13097,7 @@ public class BallerinaParser extends AbstractParser {
         STNode failKeyword = parseFailKeyword();
         STNode typeDescriptor = parseTypeDescriptor(ParserRuleContext.TYPE_DESC_IN_TYPE_BINDING_PATTERN, true, false,
                 TypePrecedence.DEFAULT);
-        STNode identifier = parseIdentifier(ParserRuleContext.VARIABLE_REF);
+        STNode identifier = parseIdentifier(ParserRuleContext.VARIABLE_NAME);
         STNode blockStatement = parseBlockNode();
         endContext();
         return STNodeFactory.createOnFailClauseNode(onKeyword, failKeyword, typeDescriptor, identifier,

@@ -100,12 +100,13 @@ public class SyntaxErrors {
             case FUNC_BODY_BLOCK:
                 return DiagnosticErrorCode.ERROR_MISSING_OPEN_BRACE_TOKEN;
             case FUNC_DEF:
+            case FUNC_DEF_START:
             case FUNC_DEF_OR_FUNC_TYPE:
             case FUNC_TYPE_DESC:
             case FUNC_TYPE_DESC_OR_ANON_FUNC:
             case IDENT_AFTER_OBJECT_IDENT:
-            case FUNC_DEF_OR_TYPE_FIRST_QUALIFIER:
-            case FUNC_DEF_OR_TYPE_SECOND_QUALIFIER:
+            case FUNC_DEF_FIRST_QUALIFIER:
+            case FUNC_DEF_SECOND_QUALIFIER:
             case FUNC_TYPE_FIRST_QUALIFIER:
             case FUNC_TYPE_SECOND_QUALIFIER:
             case OBJECT_METHOD_FIRST_QUALIFIER:
@@ -254,6 +255,7 @@ public class SyntaxErrors {
             case CLOSE_BRACKET:
                 return DiagnosticErrorCode.ERROR_MISSING_CLOSE_BRACKET_TOKEN;
             case DOT:
+            case METHOD_CALL_DOT:
                 return DiagnosticErrorCode.ERROR_MISSING_DOT_TOKEN;
             case OPEN_BRACKET:
             case TUPLE_TYPE_DESC_START:
@@ -355,6 +357,7 @@ public class SyntaxErrors {
             case XML_NAMESPACE_DECLARATION:
                 return DiagnosticErrorCode.ERROR_MISSING_XMLNS_KEYWORD;
             case ANNOTATION_KEYWORD:
+            case ANNOTATION_DECL_START:
                 return DiagnosticErrorCode.ERROR_MISSING_ANNOTATION_KEYWORD;
             case TYPE_KEYWORD:
                 return DiagnosticErrorCode.ERROR_MISSING_TYPE_KEYWORD;
