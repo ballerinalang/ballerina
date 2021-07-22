@@ -35,14 +35,17 @@ import org.ballerinalang.langserver.commons.LanguageServerContext;
 import org.ballerinalang.langserver.commons.PrepareRenameContext;
 import org.ballerinalang.langserver.commons.ReferencesContext;
 import org.ballerinalang.langserver.commons.RenameContext;
+import org.ballerinalang.langserver.commons.SemanticTokensContext;
 import org.ballerinalang.langserver.commons.SignatureContext;
 import org.ballerinalang.langserver.commons.capability.LSClientCapabilities;
 import org.ballerinalang.langserver.commons.workspace.WorkspaceManager;
+import org.ballerinalang.langserver.config.LSClientConfigHolder;
 import org.ballerinalang.langserver.contexts.ContextBuilder;
 import org.ballerinalang.langserver.diagnostic.DiagnosticsHelper;
 import org.ballerinalang.langserver.exception.UserErrorException;
 import org.ballerinalang.langserver.foldingrange.FoldingRangeProvider;
 import org.ballerinalang.langserver.hover.HoverUtil;
+import org.ballerinalang.langserver.semantictokens.SemanticTokensUtils;
 import org.ballerinalang.langserver.signature.SignatureHelpUtil;
 import org.ballerinalang.langserver.util.definition.DefinitionUtil;
 import org.ballerinalang.langserver.util.references.ReferencesUtil;
@@ -76,6 +79,8 @@ import org.eclipse.lsp4j.PrepareRenameResult;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
+import org.eclipse.lsp4j.SemanticTokens;
+import org.eclipse.lsp4j.SemanticTokensParams;
 import org.eclipse.lsp4j.SignatureHelp;
 import org.eclipse.lsp4j.SignatureHelpParams;
 import org.eclipse.lsp4j.SymbolInformation;
@@ -83,7 +88,6 @@ import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.TextDocumentService;
 
 import java.nio.file.Path;
@@ -535,7 +539,7 @@ class BallerinaTextDocumentService implements TextDocumentService {
     public void didSave(DidSaveTextDocumentParams params) {
     }
 
-    @JsonRequest
+    @Override
     public CompletableFuture<List<FoldingRange>> foldingRange(FoldingRangeRequestParams params) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -554,4 +558,27 @@ class BallerinaTextDocumentService implements TextDocumentService {
             }
         });
     }
+
+    @Override
+    public CompletableFuture<SemanticTokens> semanticTokensFull(SemanticTokensParams params) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                // Handle semantic highlighting configuration for a client that doesn't support dynamic registration
+                if (!LSClientConfigHolder.getInstance(serverContext).getConfig().isEnableSemanticHighlighting()) {
+                    return new SemanticTokens(new ArrayList<>());
+                }
+
+                SemanticTokensContext semanticTokensContext = ContextBuilder.buildSemanticTokensContext(
+                        params.getTextDocument().getUri(), this.workspaceManager, this.serverContext);
+                return SemanticTokensUtils.getSemanticTokens(semanticTokensContext);
+            } catch (Throwable e) {
+                String msg = "Operation 'textDocument/semanticTokens/full' failed!";
+                this.clientLogger.logError(LSContextOperation.TXT_SEMANTIC_TOKENS_FULL, msg, e,
+                        new TextDocumentIdentifier(params.getTextDocument().getUri()),
+                        (Position) null);
+                return new SemanticTokens(new ArrayList<>());
+            }
+        });
+    }
 }
+
