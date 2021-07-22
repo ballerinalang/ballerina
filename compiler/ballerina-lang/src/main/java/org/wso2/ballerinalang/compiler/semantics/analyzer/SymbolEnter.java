@@ -82,6 +82,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BTableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTupleType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTypeIdSet;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BTypeReferenceType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotation;
 import org.wso2.ballerinalang.compiler.tree.BLangAnnotationAttachment;
@@ -569,6 +570,11 @@ public class SymbolEnter extends BLangNodeVisitor {
         // according to the precedence.
         for (BLangType typeRef : classDefinition.typeRefs) {
             BType type = typeRef.getBType();
+
+            if (type.tag == TypeTags.TYPEREFDESC) {
+                type = ((BTypeReferenceType) type).constraint;
+            }
+
             if (type == null || type == symTable.semanticError) {
                 return;
             }
@@ -660,7 +666,9 @@ public class SymbolEnter extends BLangNodeVisitor {
 
             if (tag == TypeTags.OBJECT) {
                 BObjectType objectType;
-
+                if (referredType.tag == TypeTags.TYPEREFDESC) {
+                    referredType = ((BTypeReferenceType) referredType).constraint;
+                }
                 if (referredType.tag == TypeTags.INTERSECTION) {
                     effectiveIncludedType = objectType = (BObjectType) ((BIntersectionType) referredType).effectiveType;
                 } else {
@@ -1283,7 +1291,7 @@ public class SymbolEnter extends BLangNodeVisitor {
             case TABLE_TYPE:
             case ERROR_TYPE:
             case FUNCTION_TYPE:
-            case STREAM_TYPE:    
+            case STREAM_TYPE:
                 return true;
             default:
                 return false;
@@ -1484,7 +1492,9 @@ public class SymbolEnter extends BLangNodeVisitor {
 
         boolean label = false;
         if (definedType.tsymbol.name != Names.EMPTY) {
-            typeDefSymbol = definedType.tsymbol.createLabelSymbol();
+            typeDefSymbol = Symbols.createTypeDefinitionSymbol(definedType.tsymbol.tag, Flags.asMask(typeDefinition.flagSet),
+                    names.fromIdNode(typeDefinition.name), env.enclPkg.symbol.pkgID, definedType, env.scope.owner,
+                    typeDefinition.pos, SOURCE);
             label = true;
         } else {
             typeDefSymbol = definedType.tsymbol;
@@ -1631,6 +1641,9 @@ public class SymbolEnter extends BLangNodeVisitor {
     }
 
     private boolean isErrorIntersection(BType definedType) {
+        if (definedType.tag == TypeTags.TYPEREFDESC) {
+            definedType = ((BTypeReferenceType) definedType).constraint;
+        }
         if (definedType.tag == TypeTags.INTERSECTION) {
             BIntersectionType intersectionType = (BIntersectionType) definedType;
             return intersectionType.effectiveType.tag == TypeTags.ERROR;
@@ -3434,6 +3447,11 @@ public class SymbolEnter extends BLangNodeVisitor {
             case TypeTags.ARRAY:
                 return isCloneableTypeSkippingObjectTypeHelper(((BArrayType) type).getElementType(),
                         unresolvedTypes);
+            case TypeTags.TYPEREFDESC:
+                if (!isCloneableTypeSkippingObjectTypeHelper(((BTypeReferenceType) type).constraint, unresolvedTypes)) {
+                    return false;
+                }
+                return true;
         }
 
         return types.isAssignable(type, symTable.cloneableType);
@@ -3522,7 +3540,12 @@ public class SymbolEnter extends BLangNodeVisitor {
                         .map(bLangType -> symResolver.resolveTypeNode(bLangType, typeDefEnv))
                         .orElse(symTable.detailType);
 
-                ((BErrorType) typeDef.symbol.type).detailType = detailType;
+                BType typeDefType = typeDef.symbol.type;
+                if (typeDefType.tag == TypeTags.TYPEREFDESC) {
+                    ((BErrorType) ((BTypeReferenceType) typeDef.symbol.type).constraint).detailType = detailType;
+                } else {
+                    ((BErrorType) typeDef.symbol.type).detailType = detailType;
+                }
             } else if (typeNode.getBType() != null && typeNode.getBType().tag == TypeTags.ERROR) {
                 SymbolEnv typeDefEnv = SymbolEnv.createTypeEnv(typeNode, typeDef.symbol.scope, pkgEnv);
                 BType detailType = ((BErrorType) typeNode.getBType()).detailType;
@@ -3575,7 +3598,7 @@ public class SymbolEnter extends BLangNodeVisitor {
         BStructureType structureType = (BStructureType) typeDef.symbol.type;
         BLangStructureTypeNode structureTypeNode = (BLangStructureTypeNode) typeDef.typeNode;
 
-        if (typeDef.symbol.kind == SymbolKind.RECORD) {
+        if (typeDef.symbol.kind == SymbolKind.TYPE_DEF && typeDef.symbol.type.tsymbol.kind == SymbolKind.RECORD) {
             BLangRecordTypeNode recordTypeNode = (BLangRecordTypeNode) structureTypeNode;
             BRecordType recordType = (BRecordType) structureType;
             // update this before resolving fields type checker to work properly for field resolution
@@ -3734,6 +3757,10 @@ public class SymbolEnter extends BLangNodeVisitor {
             NodeKind kind = typeNode.getKind();
             if (kind == NodeKind.INTERSECTION_TYPE_NODE) {
                 BType currentType = typeNode.getBType();
+
+                if (currentType.tag == TypeTags.TYPEREFDESC) {
+                    currentType = ((BTypeReferenceType) currentType).constraint;
+                }
 
                 if (currentType.tag != TypeTags.INTERSECTION) {
                     continue;
@@ -4188,6 +4215,7 @@ public class SymbolEnter extends BLangNodeVisitor {
     public BVarSymbol createVarSymbol(long flags, BType varType, Name varName, SymbolEnv env,
                                       Location location, boolean isInternal) {
         BVarSymbol varSymbol;
+        varType = varType.tag == TypeTags.TYPEREFDESC ? ((BTypeReferenceType)varType).constraint : varType;
         if (varType.tag == TypeTags.INVOKABLE) {
             varSymbol = new BInvokableSymbol(SymTag.VARIABLE, flags, varName, env.enclPkg.symbol.pkgID, varType,
                                              env.scope.owner, location, isInternal ? VIRTUAL : getOrigin(varName));

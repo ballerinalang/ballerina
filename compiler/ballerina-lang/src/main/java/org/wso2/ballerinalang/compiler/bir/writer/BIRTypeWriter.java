@@ -34,6 +34,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.symbols.BEnumSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BObjectTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BRecordTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeDefinitionSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BAnnotationType;
@@ -63,6 +64,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BTableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTupleType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTypeIdSet;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BTypeReferenceType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTypedescType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BXMLType;
@@ -218,6 +220,17 @@ public class BIRTypeWriter implements TypeVisitor {
     public void visit(BTypedescType typedescType) {
 
         writeTypeCpIndex(typedescType.constraint);
+    }
+
+    @Override
+    public void visit(BTypeReferenceType typeReferenceType) {
+        BTypeDefinitionSymbol tsymbol = (BTypeDefinitionSymbol) typeReferenceType.tsymbol;
+
+        // Write the package details in the form of constant pool entry TODO find a better approach
+        writePackageIndex(tsymbol);
+
+        buff.writeInt(addStringCPEntry(typeReferenceType.definitionName));
+        writeTypeCpIndex(typeReferenceType.constraint);
     }
 
     @Override
